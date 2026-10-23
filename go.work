@@ -1,0 +1,7 @@
+go 1.27.0
+
+use (
+	./01-pixel-war
+	./02-arena-io
+	./03-uber-matching
+)

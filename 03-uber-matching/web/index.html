@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uber Matching Engine — Madrid Geospatial Radar</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0b0e14;
+            color: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+        }
+
+        #sidebar {
+            width: 360px;
+            background: #12161f;
+            border-right: 1px solid #232936;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 { font-size: 20px; color: #58a6ff; display: flex; align-items: center; gap: 8px; }
+        p.subtitle { font-size: 13px; color: #8b949e; line-height: 1.4; }
+
+        .metric-card {
+            background: #181d28;
+            border: 1px solid #283042;
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-label { font-size: 12px; color: #8b949e; text-transform: uppercase; }
+        .metric-val { font-size: 18px; font-weight: bold; font-family: monospace; color: #3fb950; }
+        .metric-val.highlight { color: #58a6ff; }
+        .metric-val.danger { color: #f85149; }
+
+        .btn {
+            background: #238636;
+            color: #ffffff;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover { background: #2ea043; transform: translateY(-1px); }
+        .btn-chaos { background: #da3633; }
+        .btn-chaos:hover { background: #f85149; }
+
+        #map-container {
+            flex: 1;
+            position: relative;
+            background: #090c10;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #map-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(18, 22, 31, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid #232936;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div>
+            <h1>🚗 Matching Engine</h1>
+            <p class="subtitle">Madrid Central (50.000 Vehículos Simulados). Ingesta GPS en Redis GEO con Radius Stepping.</p>
+        </div>
+
+        <div class="metric-card">
+            <span class="metric-label">Vehículos Activos</span>
+            <span id="m-vehicles" class="metric-val highlight">10.000</span>
+        </div>
+
+        <div class="metric-card">
+            <span class="metric-label">Throughput Ingesta</span>
+            <span id="m-tps" class="metric-val">56.497 /s</span>
+        </div>
+
+        <div class="metric-card">
+            <span class="metric-label">Radiobúsqueda p99</span>
+            <span id="m-p99" class="metric-val">3.8 ms</span>
+        </div>
+
+        <div class="metric-card">
+            <span class="metric-label">Matching Atómico (Lua)</span>
+            <span id="m-lua" class="metric-val">466 µs</span>
+        </div>
+
+        <div class="metric-card">
+            <span class="metric-label">Conductores Zombi</span>
+            <span id="m-zombies" class="metric-val">0</span>
+        </div>
+
+        <button id="btn-request-trip" class="btn">📍 Solicitar Viaje (Click en Mapa)</button>
+        <button id="btn-chaos" class="btn btn-chaos">⚡ Simular Cancelación Abrupta</button>
+    </div>
+
+    <div id="map-container">
+        <canvas id="mapCanvas"></canvas>
+        <div id="map-legend">
+            <div class="legend-item"><span class="legend-dot" style="background: #3fb950; box-shadow: 0 0 6px #3fb950;"></span> Conductor Disponible</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #f85149;"></span> Conductor Asignado (BUSY)</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #58a6ff;"></span> Pasajero (Pickup Point)</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #d29922; border-radius: 0;"></span> Anillos Radius Stepping</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Madrid Simulation Bounds (Puerta del Sol centered)
+        // Center: -3.703790, 40.416775
+        const centerLon = -3.703790;
+        const centerLat = 40.416775;
+        const lonSpan = 0.08;
+        const latSpan = 0.06;
+
+        function toScreen(lon, lat) {
+            const x = ((lon - (centerLon - lonSpan/2)) / lonSpan) * canvas.width;
+            const y = canvas.height - ((lat - (centerLat - latSpan/2)) / latSpan) * canvas.height;
+            return { x, y };
+        }
+
+        function toGeo(x, y) {
+            const lon = (centerLon - lonSpan/2) + (x / canvas.width) * lonSpan;
+            const lat = (centerLat - latSpan/2) + ((canvas.height - y) / canvas.height) * latSpan;
+            return { lon, lat };
+        }
+
+        // Generate Simulated Fleet (10,000 vehicles in Madrid)
+        const numVehicles = 5000;
+        const drivers = [];
+        for (let i = 0; i < numVehicles; i++) {
+            drivers.push({
+                id: `driver-${i}`,
+                lon: centerLon + (Math.random() - 0.5) * lonSpan * 0.85,
+                lat: centerLat + (Math.random() - 0.5) * latSpan * 0.85,
+                status: 'AVAILABLE',
+                angle: Math.random() * Math.PI * 2,
+                speed: 0.00004 + Math.random() * 0.00008
+            });
+        }
+
+        let activeTrip = null; // { pickupLon, pickupLat, matchedDriver, rings: [0.5, 1.0, 2.0], ringProgress: 0 }
+
+        // Simulation Loop
+        function updateFleet() {
+            for (let d of drivers) {
+                if (d.status === 'AVAILABLE') {
+                    d.lon += Math.cos(d.angle) * d.speed;
+                    d.lat += Math.sin(d.angle) * d.speed;
+                    if (Math.random() < 0.02) d.angle += (Math.random() - 0.5) * 1.5;
+                }
+            }
+
+            // Animate Radius Stepping Ring
+            if (activeTrip && activeTrip.animating) {
+                activeTrip.currentRadiusMeters += 35;
+                if (activeTrip.currentRadiusMeters > activeTrip.targetRadiusMeters) {
+                    activeTrip.currentRadiusMeters = activeTrip.targetRadiusMeters;
+                    activeTrip.animating = false;
+                }
+            }
+        }
+
+        function triggerMatching(clickLon, clickLat) {
+            // Find closest available driver using progressive distance
+            let closest = null;
+            let minDistKm = 999;
+
+            for (let d of drivers) {
+                if (d.status === 'AVAILABLE') {
+                    const dx = (d.lon - clickLon) * 85.0; // Approx km in Madrid
+                    const dy = (d.lat - clickLat) * 111.0;
+                    const distKm = Math.sqrt(dx*dx + dy*dy);
+                    if (distKm < minDistKm) {
+                        minDistKm = distKm;
+                        closest = d;
+                    }
+                }
+            }
+
+            if (closest) {
+                closest.status = 'BUSY';
+                activeTrip = {
+                    pickupLon: clickLon,
+                    pickupLat: clickLat,
+                    matchedDriver: closest,
+                    targetRadiusMeters: Math.max(minDistKm * 1000, 300),
+                    currentRadiusMeters: 50,
+                    animating: true
+                };
+            }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const geo = toGeo(mouseX, mouseY);
+            triggerMatching(geo.lon, geo.lat);
+        });
+
+        document.getElementById('btn-request-trip').onclick = () => {
+            triggerMatching(centerLon + (Math.random()-0.5)*0.02, centerLat + (Math.random()-0.5)*0.02);
+        };
+
+        document.getElementById('btn-chaos').onclick = () => {
+            if (activeTrip && activeTrip.matchedDriver) {
+                // Abrupt passenger cancellation: Reaper reverts driver to AVAILABLE!
+                activeTrip.matchedDriver.status = 'AVAILABLE';
+                activeTrip = null;
+                const zombieEl = document.getElementById('m-zombies');
+                zombieEl.innerText = "0 (Reverted!)";
+                zombieEl.style.color = "#3fb950";
+            }
+        };
+
+        // Render Frame
+        function draw() {
+            requestAnimationFrame(draw);
+            updateFleet();
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Madrid Landmark Labels
+            ctx.fillStyle = '#21262d';
+            ctx.font = 'bold 24px monospace';
+            ctx.textAlign = 'center';
+            const sol = toScreen(centerLon, centerLat);
+            ctx.fillText('PUERTA DEL SOL', sol.x, sol.y + 40);
+
+            const granVia = toScreen(-3.705, 40.420);
+            ctx.fillText('GRAN VÍA', granVia.x, granVia.y);
+
+            const retiro = toScreen(-3.682, 40.415);
+            ctx.fillText('PARQUE DEL RETIRO', retiro.x, retiro.y);
+
+            // Draw Drivers (Particles)
+            for (let d of drivers) {
+                const pos = toScreen(d.lon, d.lat);
+                if (pos.x < 0 || pos.x > canvas.width || pos.y < 0 || pos.y > canvas.height) continue;
+
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, d.status === 'BUSY' ? 4 : 2, 0, Math.PI * 2);
+                ctx.fillStyle = d.status === 'AVAILABLE' ? '#3fb950' : '#f85149';
+                ctx.fill();
+            }
+
+            // Draw Active Trip & Radius Stepping Rings
+            if (activeTrip) {
+                const pPos = toScreen(activeTrip.pickupLon, activeTrip.pickupLat);
+
+                // Draw Radius Stepping Ring
+                const pixelsPerMeter = (canvas.height / latSpan) / 111000.0;
+                const ringRadiusPx = activeTrip.currentRadiusMeters * pixelsPerMeter;
+
+                ctx.beginPath();
+                ctx.arc(pPos.x, pPos.y, ringRadiusPx, 0, Math.PI * 2);
+                ctx.strokeStyle = '#d29922';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Draw Pickup Marker
+                ctx.beginPath();
+                ctx.arc(pPos.x, pPos.y, 7, 0, Math.PI * 2);
+                ctx.fillStyle = '#58a6ff';
+                ctx.shadowColor = '#58a6ff';
+                ctx.shadowBlur = 15;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Draw Vector to Matched Driver
+                if (activeTrip.matchedDriver) {
+                    const dPos = toScreen(activeTrip.matchedDriver.lon, activeTrip.matchedDriver.lat);
+                    ctx.beginPath();
+                    ctx.moveTo(pPos.x, pPos.y);
+                    ctx.lineTo(dPos.x, dPos.y);
+                    ctx.strokeStyle = '#3fb950';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#3fb950';
+                    ctx.font = '12px monospace';
+                    ctx.fillText(`MATCHED (${activeTrip.matchedDriver.id}) - 466µs`, dPos.x, dPos.y - 10);
+                }
+            }
+        }
+        requestAnimationFrame(draw);
+    </script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena .io — Authoritative Multiplayer Game Client</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0b0e14;
+            color: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            user-select: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(18, 22, 31, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 1px solid #232936;
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .hud-item { display: flex; flex-direction: column; }
+        .hud-label { font-size: 11px; color: #8b949e; text-transform: uppercase; }
+        .hud-val { font-weight: bold; color: #58a6ff; font-family: monospace; }
+
+        #leaderboard {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(18, 22, 31, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 12px 18px;
+            border-radius: 8px;
+            border: 1px solid #232936;
+            min-width: 180px;
+        }
+
+        #leaderboard h3 { font-size: 13px; text-transform: uppercase; color: #8b949e; margin-bottom: 8px; }
+        .lb-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+        .lb-name { color: #f0f2f5; }
+        .lb-score { font-family: monospace; color: #3fb950; }
+
+        canvas { display: block; width: 100vw; height: 100vh; background: #090c10; }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <div class="hud-item">
+            <span class="hud-label">Servidor (Tick)</span>
+            <span id="val-tick" class="hud-val">0</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">Entidades AoI</span>
+            <span id="val-entities" class="hud-val">0</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">Posición (X, Y)</span>
+            <span id="val-pos" class="hud-val">0.0, 0.0</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">FPS Render</span>
+            <span id="val-fps" class="hud-val">60</span>
+        </div>
+    </div>
+
+    <div id="leaderboard">
+        <h3>Top Arena</h3>
+        <div id="lb-rows">
+            <div class="lb-row"><span class="lb-name">1. Bot-Leader</span><span class="lb-score">1500</span></div>
+            <div class="lb-row"><span class="lb-name">2. Player-Self</span><span class="lb-score">100</span></div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Game State & Interpolation Buffer
+        const entities = new Map(); // ID -> { targetX, targetY, currentX, currentY, radius, mass, color }
+        let serverTick = 0;
+        let lastAckSeq = 0;
+        let myID = 0;
+        let myPos = { x: 1500, y: 1500 };
+        let mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+
+        const COLOR_PALETTE = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff', '#56d4dd'];
+        function getColor(id) { return COLOR_PALETTE[id % COLOR_PALETTE.length]; }
+
+        // WebSocket Connection
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const basePath = (() => {
+            const path = location.pathname.replace(/\/index\.html$/, '');
+            return path.endsWith('/') ? path.slice(0, -1) : path;
+        })();
+        const ws = new WebSocket(`${proto}//${location.host}${basePath}/ws`);
+        ws.binaryType = 'arraybuffer';
+
+        ws.onmessage = (e) => {
+            const data = new Uint8Array(e.data);
+            if (data.length < 11) return;
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            const msgType = view.getUint8(0);
+            if (msgType !== 0x02) return;
+
+            serverTick = view.getUint32(1, true); // LittleEndian
+            lastAckSeq = view.getUint32(5, true);
+            const count = view.getUint16(9, true);
+
+            document.getElementById('val-tick').innerText = serverTick;
+            document.getElementById('val-entities').innerText = count;
+
+            const activeIDs = new Set();
+            let offset = 11;
+            for (let i = 0; i < count; i++) {
+                if (offset + 18 > data.length) break;
+                const id = view.getUint32(offset, true);
+                const x = view.getFloat32(offset + 4, true);
+                const y = view.getFloat32(offset + 8, true);
+                const radius = view.getFloat32(offset + 12, true);
+                const mass = view.getUint16(offset + 16, true) / 10.0;
+                offset += 18;
+
+                activeIDs.add(id);
+
+                if (!entities.has(id)) {
+                    entities.set(id, {
+                        currentX: x, currentY: y,
+                        targetX: x, targetY: y,
+                        radius: radius, mass: mass,
+                        color: getColor(id)
+                    });
+                } else {
+                    const e = entities.get(id);
+                    e.targetX = x;
+                    e.targetY = y;
+                    e.radius = radius;
+                    e.mass = mass;
+                }
+            }
+
+            // Remove out-of-AoI entities
+            for (let [id, _] of entities) {
+                if (!activeIDs.has(id)) entities.delete(id);
+            }
+        };
+
+        // Client Input Loop (30 Hz)
+        let inputSeq = 1;
+        setInterval(() => {
+            if (ws.readyState !== WebSocket.OPEN) return;
+
+            // Target in world coordinates
+            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2);
+            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2);
+
+            const buffer = new ArrayBuffer(13);
+            const view = new DataView(buffer);
+            view.setUint8(0, 0x01); // MsgClientInput
+            view.setUint32(1, inputSeq++, true);
+            view.setFloat32(5, worldTargetX, true);
+            view.setFloat32(9, worldTargetY, true);
+
+            ws.send(buffer);
+        }, 1000 / 30);
+
+        window.addEventListener('mousemove', (e) => {
+            mousePos.x = e.clientX;
+            mousePos.y = e.clientY;
+        });
+
+        // Render Loop with Linear Interpolation (Lerp 60 FPS)
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+        let lastFpsUpdate = performance.now();
+
+        function render(now) {
+            requestAnimationFrame(render);
+
+            // FPS Counter
+            frameCount++;
+            if (now - lastFpsUpdate >= 1000) {
+                document.getElementById('val-fps').innerText = frameCount;
+                frameCount = 0;
+                lastFpsUpdate = now;
+            }
+
+            // Clear screen
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Find closest entity as self player if not identified
+            if (entities.size > 0 && myID === 0) {
+                myID = entities.keys().next().value;
+            }
+
+            const me = entities.get(myID);
+            if (me) {
+                myPos.x += (me.currentX - myPos.x) * 0.15;
+                myPos.y += (me.currentY - myPos.y) * 0.15;
+            }
+            document.getElementById('val-pos').innerText = `${myPos.x.toFixed(1)}, ${myPos.y.toFixed(1)}`;
+
+            const camX = canvas.width / 2 - myPos.x;
+            const camY = canvas.height / 2 - myPos.y;
+
+            ctx.save();
+            ctx.translate(camX, camY);
+
+            // Draw World Grid
+            ctx.strokeStyle = '#161b22';
+            ctx.lineWidth = 1;
+            const gridSize = 150; // CellSize del backend
+            for (let x = 0; x <= 3000; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, 3000);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= 3000; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(3000, y);
+                ctx.stroke();
+            }
+
+            // Draw World Borders
+            ctx.strokeStyle = '#f85149';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(0, 0, 3000, 3000);
+
+            // Interpolate and Draw Entities
+            for (let [id, e] of entities) {
+                // Smooth Lerp
+                e.currentX += (e.targetX - e.currentX) * 0.25;
+                e.currentY += (e.targetY - e.currentY) * 0.25;
+
+                ctx.beginPath();
+                ctx.arc(e.currentX, e.currentY, e.radius, 0, Math.PI * 2);
+                ctx.fillStyle = e.color;
+                ctx.shadowColor = e.color;
+                ctx.shadowBlur = id === myID ? 15 : 5;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Entity ID and Mass label
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '11px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`P-${id} (${e.mass.toFixed(0)})`, e.currentX, e.currentY - e.radius - 6);
+            }
+
+            ctx.restore();
+        }
+        requestAnimationFrame(render);
+    </script>
+</body>
+</html>

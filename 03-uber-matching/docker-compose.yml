@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: uber-redis
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - uber_redis_data:/data
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: uber-postgres
+    environment:
+      POSTGRES_USER: uber
+      POSTGRES_PASSWORD: uber_secret
+      POSTGRES_DB: uber_matching_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - uber_pg_data:/var/lib/postgresql/data
+
+volumes:
+  uber_redis_data:
+  uber_pg_data:

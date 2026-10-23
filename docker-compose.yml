@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # =====================================================================
+  # Portfolio API Gateway / Reverse Proxy (Nginx)
+  # Centralized Port 80 Entrypoint for Recruiters and Hiring Managers
+  # =====================================================================
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: portfolio-gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    depends_on:
+      - pixelwar
+      - arena
+      - uber
+    networks:
+      - portfolio-net
+    restart: unless-stopped
+
+  # =====================================================================
+  # Microservice 1: Pixel War (r/place clone)
+  # High-Concurrency 1000x1000 Canvas with 64 Striped Mutexes
+  # =====================================================================
+  pixelwar:
+    build:
+      context: ./01-pixel-war
+      dockerfile: Dockerfile
+    container_name: portfolio-pixelwar
+    ports:
+      - "8080:8080" # Exposed for standalone direct access
+    networks:
+      - portfolio-net
+    restart: unless-stopped
+
+  # =====================================================================
+  # Microservice 2: Arena .io Multiplayer Engine
+  # Authoritative 30 TPS Game Loop with 2D Spatial Hash Grid
+  # =====================================================================
+  arena:
+    build:
+      context: ./02-arena-io
+      dockerfile: Dockerfile
+    container_name: portfolio-arena
+    ports:
+      - "8081:8081" # Exposed for standalone direct access
+    networks:
+      - portfolio-net
+    restart: unless-stopped
+
+  # =====================================================================
+  # Microservice 3: Uber Matching Engine
+  # 50,000 Drivers Ingestion, Radius Stepping & Atomic Lua Engine
+  # =====================================================================
+  uber:
+    build:
+      context: ./03-uber-matching
+      dockerfile: Dockerfile
+    container_name: portfolio-uber
+    ports:
+      - "8082:8082" # Exposed for standalone direct access
+    environment:
+      - PORT=8082
+      - REDIS_URL=redis:6379
+      - POSTGRES_URL=postgres://uber:uber_secret@postgres:5432/uber_matching_db?sslmode=disable
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    networks:
+      - portfolio-net
+    restart: unless-stopped
+
+  # =====================================================================
+  # Distributed Infrastructure: Redis 7.2
+  # Real-time state, Spatial Indexing (GEO) & Transactional Outbox (Streams)
+  # =====================================================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: portfolio-redis
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - portfolio-net
+    restart: unless-stopped
+
+  # =====================================================================
+  # Distributed Infrastructure: PostgreSQL 16
+  # Historical Event Sourcing Archive with pgxpool
+  # =====================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: portfolio-postgres
+    environment:
+      POSTGRES_USER: uber
+      POSTGRES_PASSWORD: uber_secret
+      POSTGRES_DB: uber_matching_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uber -d uber_matching_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - portfolio-net
+    restart: unless-stopped
+
+networks:
+  portfolio-net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  pg_data:

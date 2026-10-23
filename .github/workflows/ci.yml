@@ -1,0 +1,58 @@
+name: High-Concurrency CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Run Unit, Race & Chaos Tests
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 2s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Verify Go Workspace & Modules
+        run: |
+          go work sync
+
+      - name: Run Tests with Race Detector
+        run: |
+          go test -v -race ./01-pixel-war/internal/...
+          go test -v -race ./02-arena-io/internal/...
+          go test -v -race ./03-uber-matching/internal/...
+
+      - name: Run Benchmarks Validation
+        run: |
+          go test -bench=. -run=^$ -benchtime=500ms ./01-pixel-war/internal/canvas
+          go test -bench=. -run=^$ -benchtime=500ms ./02-arena-io/internal/...
+          go test -bench=. -run=^$ -benchtime=500ms ./03-uber-matching/internal/...
+
+  docker-build:
+    name: Validate Docker Builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Pixel War Docker Image
+        run: docker build -t pixel-war:ci ./01-pixel-war

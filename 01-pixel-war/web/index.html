@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel War (r/place) — High-Concurrency Canvas</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0f1117;
+            color: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
+
+        header {
+            padding: 10px 20px;
+            background: rgba(22, 27, 34, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #30363d;
+            z-index: 10;
+        }
+
+        .title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: #1c2128;
+            border: 1px solid #30363d;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #e5534b;
+        }
+        .status-dot.connected {
+            background: #2ea043;
+            box-shadow: 0 0 8px #2ea043;
+        }
+
+        .coords-badge {
+            font-family: monospace;
+            font-size: 13px;
+            color: #8b949e;
+        }
+
+        #viewport {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+            background: #090d16;
+        }
+
+        #canvas-wrapper {
+            position: absolute;
+            transform-origin: 0 0;
+            image-rendering: pixelated;
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            background: #ffffff;
+            image-rendering: pixelated;
+        }
+
+        footer {
+            padding: 12px 20px;
+            background: rgba(22, 27, 34, 0.95);
+            backdrop-filter: blur(8px);
+            border-top: 1px solid #30363d;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            z-index: 10;
+            overflow-x: auto;
+        }
+
+        .color-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.1s, border-color 0.1s;
+        }
+        .color-swatch:hover {
+            transform: scale(1.15);
+        }
+        .color-swatch.active {
+            border-color: #ffffff;
+            transform: scale(1.2);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="title-group">
+            <h2>🎨 Pixel War</h2>
+            <span class="status-badge">
+                <span id="ws-dot" class="status-dot"></span>
+                <span id="ws-status">Conectando...</span>
+            </span>
+        </div>
+        <div class="coords-badge">
+            <span id="coords-text">X: 0, Y: 0</span> | Zoom: <span id="zoom-text">1.0x</span>
+        </div>
+    </header>
+
+    <div id="viewport">
+        <div id="canvas-wrapper">
+            <canvas id="canvas" width="1000" height="1000"></canvas>
+        </div>
+    </div>
+
+    <footer id="palette-bar"></footer>
+
+    <script>
+        const PALETTE = [
+            "#6D001A", "#BE0039", "#FF4500", "#FFA800", "#FFD635", "#FFF8B8",
+            "#00A368", "#00CC78", "#7EED56", "#00756F", "#009EAA", "#00CCC0",
+            "#2450A4", "#3690EA", "#51E9F4", "#493AC1", "#6A5CFF", "#94B3FF",
+            "#811E9F", "#B44AC0", "#E4ABFF", "#DE107F", "#FF3881", "#FF99AA",
+            "#6D482F", "#9C6926", "#FFB470", "#000000", "#515252", "#898D90",
+            "#D4D7D9", "#FFFFFF"
+        ];
+
+        let selectedColor = 2; // Default Orange-Red
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvas-wrapper');
+        const viewport = document.getElementById('viewport');
+        const coordsText = document.getElementById('coords-text');
+        const zoomText = document.getElementById('zoom-text');
+        const wsDot = document.getElementById('ws-dot');
+        const wsStatus = document.getElementById('ws-status');
+
+        // Pan and Zoom State
+        let scale = 1.0;
+        let panX = (window.innerWidth - 1000) / 2;
+        let panY = (window.innerHeight - 150 - 1000) / 2;
+        let isDragging = false;
+        let startX, startY;
+
+        function updateTransform() {
+            wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+            zoomText.innerText = scale.toFixed(1) + 'x';
+        }
+        updateTransform();
+
+        // 1. Build Palette Bar
+        const paletteBar = document.getElementById('palette-bar');
+        PALETTE.forEach((hex, index) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch' + (index === selectedColor ? ' active' : '');
+            swatch.style.backgroundColor = hex;
+            swatch.title = `Color ${index} (${hex})`;
+            swatch.onclick = () => {
+                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                swatch.classList.add('active');
+                selectedColor = index;
+            };
+            paletteBar.appendChild(swatch);
+        });
+
+        // 2. Fetch Initial 1MB Binary Snapshot
+        const basePath = (() => {
+            const path = location.pathname.replace(/\/index\.html$/, '');
+            return path.endsWith('/') ? path.slice(0, -1) : path;
+        })();
+
+        async function loadSnapshot() {
+            try {
+                const res = await fetch(`${basePath}/canvas`);
+                const buf = await res.arrayBuffer();
+                const bytes = new Uint8Array(buf);
+                const imgData = ctx.createImageData(1000, 1000);
+                const data = imgData.data;
+
+                for (let i = 0; i < bytes.length; i++) {
+                    const colorIdx = bytes[i];
+                    const hex = PALETTE[colorIdx] || "#FFFFFF";
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+
+                    const offset = i * 4;
+                    data[offset] = r;
+                    data[offset + 1] = g;
+                    data[offset + 2] = b;
+                    data[offset + 3] = 255;
+                }
+                ctx.putImageData(imgData, 0, 0);
+            } catch (err) {
+                console.error("Error loading snapshot:", err);
+            }
+        }
+        loadSnapshot();
+
+        // 3. Setup WebSocket Binary Protocol
+        let ws;
+        function connectWS() {
+            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${proto}//${location.host}${basePath}/ws`);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = () => {
+                wsDot.classList.add('connected');
+                wsStatus.innerText = 'En vivo (5.000 VUs)';
+            };
+
+            ws.onclose = () => {
+                wsDot.classList.remove('connected');
+                wsStatus.innerText = 'Desconectado (Reintentando...)';
+                setTimeout(connectWS, 2000);
+            };
+
+            ws.onmessage = (e) => {
+                const data = new Uint8Array(e.data);
+                // Each delta packet is 5 bytes: [X: uint16, Y: uint16, Color: uint8]
+                for (let i = 0; i <= data.length - 5; i += 5) {
+                    const view = new DataView(data.buffer, data.byteOffset + i, 5);
+                    const x = view.getUint16(0, false); // Big-Endian
+                    const y = view.getUint16(2, false);
+                    const colorIdx = view.getUint8(4);
+
+                    ctx.fillStyle = PALETTE[colorIdx] || "#FFFFFF";
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            };
+        }
+        connectWS();
+
+        // 4. Click to Paint (Send 5-byte Binary Frame)
+        function getCanvasCoords(clientX, clientY) {
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = clientX - rect.left;
+            const mouseY = clientY - rect.top;
+            const canvasX = Math.floor((mouseX - panX) / scale);
+            const canvasY = Math.floor((mouseY - panY) / scale);
+            return { x: canvasX, y: canvasY };
+        }
+
+        viewport.onmousemove = (e) => {
+            const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+            if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+                coordsText.innerText = `X: ${x}, Y: ${y}`;
+            }
+
+            if (isDragging) {
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                updateTransform();
+            }
+        };
+
+        viewport.onmousedown = (e) => {
+            if (e.button === 1 || e.shiftKey) { // Middle click or shift+drag for pan
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+            } else if (e.button === 0) { // Left click = Paint
+                const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+                if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+                    paintPixel(x, y, selectedColor);
+                }
+            }
+        };
+
+        window.onmouseup = () => { isDragging = false; };
+
+        viewport.onwheel = (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.2 : 0.8;
+            const newScale = Math.min(Math.max(scale * zoomFactor, 0.4), 20.0);
+            
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            panX = mouseX - (mouseX - panX) * (newScale / scale);
+            panY = mouseY - (mouseY - panY) * (newScale / scale);
+            scale = newScale;
+            updateTransform();
+        };
+
+        function paintPixel(x, y, colorIdx) {
+            // Local optimistic paint
+            ctx.fillStyle = PALETTE[colorIdx];
+            ctx.fillRect(x, y, 1, 1);
+
+            // Send 5-byte Big-Endian packet to Go server
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const buffer = new ArrayBuffer(5);
+                const view = new DataView(buffer);
+                view.setUint16(0, x, false); // Big-Endian
+                view.setUint16(2, y, false);
+                view.setUint8(4, colorIdx);
+                ws.send(buffer);
+            }
+        }
+    </script>
+</body>
+</html>
