@@ -14,9 +14,15 @@ const (
 	MsgFoodInit     uint8 = 0x03
 	MsgFoodEaten    uint8 = 0x04
 	MsgKillEvent    uint8 = 0x05
+	MsgClientAction uint8 = 0x06
 	HeaderSize            = 11
-	EntityRecordLen       = 18
+	EntityRecordLen       = 22
 	MaxPacketSize         = 4096
+)
+
+const (
+	ActionSplit uint8 = 0x01
+	ActionEject uint8 = 0x02
 )
 
 var (
@@ -68,11 +74,12 @@ var BufferPool = sync.Pool{
 }
 
 type EntitySnapshot struct {
-	ID     uint32
-	X      float32
-	Y      float32
-	Radius float32
-	Mass   uint16
+	ID      uint32
+	OwnerID uint32
+	X       float32
+	Y       float32
+	Radius  float32
+	Mass    uint16
 }
 
 func EncodeSnapshot(dst []byte, serverTick uint32, ackSeq uint32, entities []EntitySnapshot) ([]byte, error) {
@@ -89,10 +96,11 @@ func EncodeSnapshot(dst []byte, serverTick uint32, ackSeq uint32, entities []Ent
 	offset := HeaderSize
 	for _, e := range entities {
 		binary.LittleEndian.PutUint32(dst[offset:offset+4], e.ID)
-		binary.LittleEndian.PutUint32(dst[offset+4:offset+8], math.Float32bits(e.X))
-		binary.LittleEndian.PutUint32(dst[offset+8:offset+12], math.Float32bits(e.Y))
-		binary.LittleEndian.PutUint32(dst[offset+12:offset+16], math.Float32bits(e.Radius))
-		binary.LittleEndian.PutUint16(dst[offset+16:offset+18], e.Mass)
+		binary.LittleEndian.PutUint32(dst[offset+4:offset+8], e.OwnerID)
+		binary.LittleEndian.PutUint32(dst[offset+8:offset+12], math.Float32bits(e.X))
+		binary.LittleEndian.PutUint32(dst[offset+12:offset+16], math.Float32bits(e.Y))
+		binary.LittleEndian.PutUint32(dst[offset+16:offset+20], math.Float32bits(e.Radius))
+		binary.LittleEndian.PutUint16(dst[offset+20:offset+22], e.Mass)
 		offset += EntityRecordLen
 	}
 

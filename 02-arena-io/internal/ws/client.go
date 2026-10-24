@@ -1,6 +1,8 @@
 package ws
 
 import (
+	"encoding/binary"
+	"math"
 	"time"
 
 	"github.com/cv-projects/arena-io/internal/game"
@@ -12,7 +14,7 @@ const (
 	writeWait      = 5 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 128
+	maxMessageSize = 256
 	sendBufferSize = 64
 )
 
@@ -51,12 +53,20 @@ func (c *Client) ReadPump(w *game.World) {
 			break
 		}
 
-		if messageType == websocket.BinaryMessage && len(message) >= 13 {
-			input, err := netproto.DecodeClientInput(message)
-			if err != nil {
-				continue
+		if messageType == websocket.BinaryMessage && len(message) > 0 {
+			if message[0] == netproto.MsgClientInput && len(message) >= 13 {
+				input, err := netproto.DecodeClientInput(message)
+				if err == nil {
+					w.QueueInput(c.playerID, input)
+				}
+			} else if message[0] == netproto.MsgClientAction && len(message) >= 10 {
+				actionType := message[1]
+				bitsX := binary.LittleEndian.Uint32(message[2:6])
+				bitsY := binary.LittleEndian.Uint32(message[6:10])
+				targetX := math.Float32frombits(bitsX)
+				targetY := math.Float32frombits(bitsY)
+				w.ProcessAction(c.playerID, actionType, float64(targetX), float64(targetY))
 			}
-			w.QueueInput(c.playerID, input)
 		}
 	}
 }

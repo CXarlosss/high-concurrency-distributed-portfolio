@@ -140,6 +140,161 @@
             box-shadow: 0 4px 20px rgba(218, 54, 51, 0.4);
         }
 
+        /* Netcode & Latency Simulator Panel */
+        .netcode-inspector {
+            background: rgba(8, 11, 18, 0.75);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .inspector-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .inspector-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .drift-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            transition: all 0.2s;
+        }
+
+        .drift-badge.drift-warn {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        .drift-badge.drift-alert {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .slider-label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #94a3b8;
+        }
+
+        .slider-val {
+            color: #38bdf8;
+            font-weight: 700;
+        }
+
+        .netcode-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.12);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .netcode-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #38bdf8;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .netcode-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+
+        .ghost-toggle-row {
+            display: flex;
+            align-items: center;
+            padding-top: 4px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+            font-size: 10px;
+            color: #cbd5e1;
+        }
+
+        .toggle-container input {
+            accent-color: #38bdf8;
+            cursor: pointer;
+        }
+
+        /* Quick Action Buttons (Split & Eject) */
+        .actions-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #f1f5f9;
+            padding: 7px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+
+        .action-btn:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+            transform: translateY(-1px);
+        }
+
+        .btn-key {
+            background: rgba(255, 255, 255, 0.12);
+            padding: 1px 4px;
+            border-radius: 3px;
+            color: #94a3b8;
+            font-size: 9px;
+            font-weight: 700;
+        }
+
         /* Tactical Circular Radar Minimap (Radar Style) */
         #radar-container {
             position: absolute;
@@ -394,7 +549,7 @@
             <div class="spec-line"><span class="spec-label">Tick Rate:</span> <span class="spec-val green" id="spec-tick-rate">30.0 TPS (Delta: 33.3ms)</span></div>
             <div class="spec-line"><span class="spec-label">Spatial Hash:</span> <span class="spec-val" id="spec-spatial">62 µs (9 cells queried)</span></div>
             <div class="spec-line"><span class="spec-label">Allocations / Tick:</span> <span class="spec-val green">0 allocs (sync.Pool active)</span></div>
-            <div class="spec-line"><span class="spec-label">Client Netcode:</span> <span class="spec-val amber">18B Binary Frame · Lerp 100ms</span></div>
+            <div class="spec-line"><span class="spec-label">Client Netcode:</span> <span class="spec-val amber">22B Binary Frame · Lerp 100ms</span></div>
         </div>
 
         <!-- Realtime Metrics Row -->
@@ -408,13 +563,54 @@
                 <span class="metric-val" id="val-entities" style="color: #a855f7;">0</span>
             </div>
             <div class="metric-box">
-                <span class="metric-label">Tu Masa</span>
+                <span class="metric-label">Masa Total</span>
                 <span class="metric-val" id="val-mass" style="color: #10b981;">10</span>
             </div>
             <div class="metric-box">
                 <span class="metric-label">Render FPS</span>
                 <span class="metric-val" id="val-fps">60</span>
             </div>
+        </div>
+
+        <!-- Netcode & Latency Simulator Panel -->
+        <div class="netcode-inspector font-mono">
+            <div class="inspector-header">
+                <span class="inspector-title">📡 Simulador de Lag / Jitter</span>
+                <span class="drift-badge" id="drift-badge">Drift: 0.0px</span>
+            </div>
+            
+            <div class="slider-group">
+                <div class="slider-label-row">
+                    <span>Latencia Artificial (RTT):</span>
+                    <span id="val-latency" class="slider-val">0 ms</span>
+                </div>
+                <input type="range" id="slider-latency" min="0" max="300" step="10" value="0" class="netcode-slider">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label-row">
+                    <span>Packet Jitter:</span>
+                    <span id="val-jitter" class="slider-val">±0 ms</span>
+                </div>
+                <input type="range" id="slider-jitter" min="0" max="30" step="2" value="0" class="netcode-slider">
+            </div>
+
+            <div class="ghost-toggle-row">
+                <label class="toggle-container">
+                    <input type="checkbox" id="chk-ghost" checked>
+                    <span>Mostrar Predicción vs Autoritativo (Ghosting)</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Quick Action Buttons (Split & Eject shortcuts) -->
+        <div class="actions-row font-mono">
+            <button class="action-btn" onclick="triggerSplit()" title="Presiona [Espacio] para Dividir célula en dos">
+                <span class="btn-key">[ESPACIO]</span> Split Célula
+            </button>
+            <button class="action-btn" onclick="triggerEject()" title="Presiona [W] para Eyectar masa forward">
+                <span class="btn-key">[W]</span> Eyectar Masa
+            </button>
         </div>
 
         <!-- Bot Swarm Trigger -->
@@ -457,8 +653,7 @@
 
     <!-- Floating Help Pill -->
     <div class="help-banner">
-        <span>🖱️ Guía tu célula con el cursor •</span>
-        <span>Spatial Hash Grid resuelve colisiones en <span class="help-pill-highlight">62 µs</span> (9 celdas AoI)</span>
+        <span>🖱️ Cursor: Dirección • <span class="help-pill-highlight">[Espacio] Split</span> • <span class="help-pill-highlight">[W] Eject Masa</span> • Netcode Inspector con Latencia/Jitter</span>
     </div>
 
     <!-- Main Game Canvas -->
@@ -500,20 +695,47 @@
         ];
 
         function getEntityIdentity(id) {
-            if (id === myID) {
+            if (id === myID && myID !== 0) {
                 return { name: "⭐ [TÚ] Player-Core", color: "#00f0ff", isMe: true };
             }
             const profile = BOT_PROFILES[id % BOT_PROFILES.length];
             return { name: profile.name, color: profile.color, isMe: false };
         }
 
-        // --- 2. Game State & Interpolation Buffers ---
-        const entities = new Map(); // ID -> { targetX, targetY, currentX, currentY, targetRadius, radius, mass, color, name, isMe }
+        // --- 2. Game State & Netcode Simulation Buffers ---
+        const entities = new Map(); // id -> Entity
         let serverTick = 0;
         let lastAckSeq = 0;
         let myID = 0;
         let myPos = { x: 1500, y: 1500 };
         let mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+
+        // Netcode Simulator State
+        let simLatency = 0;
+        let simJitter = 0;
+        let showGhost = true;
+        let currentDrift = 0;
+
+        const sliderLatency = document.getElementById('slider-latency');
+        const sliderJitter = document.getElementById('slider-jitter');
+        const valLatency = document.getElementById('val-latency');
+        const valJitter = document.getElementById('val-jitter');
+        const chkGhost = document.getElementById('chk-ghost');
+        const driftBadge = document.getElementById('drift-badge');
+
+        sliderLatency.addEventListener('input', (e) => {
+            simLatency = parseInt(e.target.value);
+            valLatency.innerText = `${simLatency} ms`;
+        });
+
+        sliderJitter.addEventListener('input', (e) => {
+            simJitter = parseInt(e.target.value);
+            valJitter.innerText = `±${simJitter} ms`;
+        });
+
+        chkGhost.addEventListener('change', (e) => {
+            showGhost = e.target.checked;
+        });
 
         // Food Pellets & Palette
         const pellets = [];
@@ -542,7 +764,7 @@
             }
         }
 
-        // --- 3. Netcode WebSocket Client ---
+        // --- 3. Netcode WebSocket Client with Lag/Jitter Injection ---
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
         const basePath = (() => {
             const path = location.pathname.replace(/\/index\.html$/, '');
@@ -563,15 +785,28 @@
             const data = new Uint8Array(e.data);
             if (data.length < 1) return;
 
+            // Welcome packet sets authoritative player ID immediately without synthetic lag
             const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-            const msgType = view.getUint8(0);
-
-            // 0x00: Server Welcome Packet with authoritative Player ID
-            if (msgType === 0x00) {
+            if (view.getUint8(0) === 0x00) {
                 myID = view.getUint32(1, true);
                 console.log("[Arena] Assigned Authoritative Player ID:", myID);
                 return;
             }
+
+            // Simulate incoming packet latency + jitter before processing
+            if (simLatency <= 0 && simJitter <= 0) {
+                processServerPacket(view, data);
+            } else {
+                const jitterOffset = (Math.random() * 2 - 1) * simJitter;
+                const delay = Math.max(0, (simLatency / 2) + jitterOffset);
+                setTimeout(() => {
+                    processServerPacket(view, data);
+                }, delay);
+            }
+        };
+
+        function processServerPacket(view, data) {
+            const msgType = view.getUint8(0);
 
             // 0x03: Authoritative Food Init Packet
             if (msgType === 0x03 && data.length >= 3) {
@@ -627,7 +862,7 @@
                 return;
             }
 
-            // 0x02: Authoritative Server World Snapshot
+            // 0x02: Authoritative Server World Snapshot (22-byte entity records)
             if (msgType !== 0x02 || data.length < 11) return;
 
             const now = performance.now();
@@ -650,33 +885,49 @@
             const activeIDs = new Set();
             let offset = 11;
             for (let i = 0; i < count; i++) {
-                if (offset + 18 > data.length) break;
+                if (offset + 22 > data.length) break;
                 const id = view.getUint32(offset, true);
-                const x = view.getFloat32(offset + 4, true);
-                const y = view.getFloat32(offset + 8, true);
-                const radius = view.getFloat32(offset + 12, true);
-                const mass = view.getUint16(offset + 16, true) / 10.0;
-                offset += 18;
+                const ownerId = view.getUint32(offset + 4, true);
+                const x = view.getFloat32(offset + 8, true);
+                const y = view.getFloat32(offset + 12, true);
+                const radius = view.getFloat32(offset + 16, true);
+                const mass = view.getUint16(offset + 20, true) / 10.0;
+                offset += 22;
 
                 activeIDs.add(id);
+                const isMe = (ownerId === myID && myID !== 0);
 
                 if (!entities.has(id)) {
-                    const meta = getEntityIdentity(id);
+                    const meta = getEntityIdentity(ownerId);
+                    const displayName = isMe ? (id === myID ? "⭐ [TÚ] Player-Core" : `⭐ [TÚ] Sub-Cell #${id % 1000}`) : meta.name;
+                    const displayColor = isMe ? "#00f0ff" : meta.color;
+
                     entities.set(id, {
+                        id: id,
+                        ownerId: ownerId,
                         currentX: x, currentY: y,
                         targetX: x, targetY: y,
+                        serverX: x, serverY: y,
                         currentRadius: radius, targetRadius: radius,
                         mass: mass,
-                        color: meta.color,
-                        name: meta.name,
-                        isMe: meta.isMe
+                        color: displayColor,
+                        name: displayName,
+                        isMe: isMe
                     });
                 } else {
                     const ent = entities.get(id);
+                    ent.ownerId = ownerId;
                     ent.targetX = x;
                     ent.targetY = y;
+                    ent.serverX = x;
+                    ent.serverY = y;
                     ent.targetRadius = radius;
                     ent.mass = mass;
+                    ent.isMe = isMe;
+                    if (isMe) {
+                        ent.name = (id === myID ? "⭐ [TÚ] Player-Core" : `⭐ [TÚ] Sub-Cell #${id % 1000}`);
+                        ent.color = "#00f0ff";
+                    }
                 }
             }
 
@@ -687,48 +938,53 @@
                 }
             }
 
-            // Fallback for self ID if not explicitly known
-            if (myID === 0 && entities.size > 0) {
-                myID = entities.keys().next().value;
-                const selfEnt = entities.get(myID);
-                if (selfEnt) {
-                    selfEnt.isMe = true;
-                    selfEnt.name = "⭐ [TÚ] Player-Core";
-                    selfEnt.color = "#00f0ff";
+            // Update Total Player Mass on HUD
+            let totalMyMass = 0;
+            for (let [_, ent] of entities) {
+                if (ent.isMe) totalMyMass += ent.mass;
+            }
+            if (totalMyMass > 0) {
+                document.getElementById('val-mass').innerText = totalMyMass.toFixed(0);
+            }
+
+            // Update Dynamic Leaderboard with Owner Aggregation
+            updateLeaderboard();
+        }
+
+        // --- 4. Dynamic Leaderboard with Owner Aggregation & Medals ---
+        function updateLeaderboard() {
+            const ownerMap = new Map();
+            let totalWorldMass = 0;
+
+            for (let [_, ent] of entities) {
+                totalWorldMass += ent.mass;
+                if (!ownerMap.has(ent.ownerId)) {
+                    const meta = getEntityIdentity(ent.ownerId);
+                    ownerMap.set(ent.ownerId, {
+                        ownerId: ent.ownerId,
+                        totalMass: ent.mass,
+                        name: ent.isMe ? "⭐ [TÚ] Player-Core" : meta.name,
+                        color: ent.isMe ? "#00f0ff" : meta.color,
+                        isMe: ent.isMe
+                    });
+                } else {
+                    ownerMap.get(ent.ownerId).totalMass += ent.mass;
                 }
             }
 
-            // Update Player Mass
-            const selfEnt = entities.get(myID);
-            if (selfEnt) {
-                document.getElementById('val-mass').innerText = selfEnt.mass.toFixed(0);
-            }
-
-            // Update Dynamic Leaderboard
-            updateLeaderboard();
-        };
-
-        // --- 4. Dynamic Leaderboard with Badges ---
-        function updateLeaderboard() {
-            const sorted = Array.from(entities.entries())
-                .sort((a, b) => b[1].mass - a[1].mass)
+            const sorted = Array.from(ownerMap.values())
+                .sort((a, b) => b.totalMass - a.totalMass)
                 .slice(0, 10);
 
             const lbRows = document.getElementById('lb-rows');
             if (sorted.length === 0) return;
 
-            let totalMass = 0;
-            for (let [_, ent] of entities) totalMass += ent.mass;
-
-            const topLeader = sorted[0][1];
-            const dominantPct = totalMass > 0 ? ((topLeader.mass / totalMass) * 100).toFixed(1) : 0;
+            const topLeader = sorted[0];
+            const dominantPct = totalWorldMass > 0 ? ((topLeader.totalMass / totalWorldMass) * 100).toFixed(1) : 0;
             document.getElementById('dominant-pct').innerText = `${dominantPct}%`;
             document.getElementById('dominant-bar').style.width = `${Math.min(dominantPct * 2, 100)}%`;
 
             lbRows.innerHTML = sorted.map((item, idx) => {
-                const id = item[0];
-                const ent = item[1];
-                const isMe = id === myID;
                 let badgeClass = 'lb-badge-n';
                 let badgeTxt = `${idx + 1}`;
                 if (idx === 0) { badgeClass = 'lb-badge-1'; badgeTxt = '🥇'; }
@@ -736,10 +992,10 @@
                 else if (idx === 2) { badgeClass = 'lb-badge-3'; badgeTxt = '🥉'; }
 
                 return `
-                    <div class="lb-row ${isMe ? 'self' : ''}">
+                    <div class="lb-row ${item.isMe ? 'self' : ''}">
                         <span class="lb-badge ${badgeClass}">${badgeTxt}</span>
-                        <span class="lb-name ${isMe ? 'self' : ''}">${ent.name}</span>
-                        <span class="lb-mass">${ent.mass.toFixed(0)}</span>
+                        <span class="lb-name ${item.isMe ? 'self' : ''}">${item.name}</span>
+                        <span class="lb-mass">${item.totalMass.toFixed(0)}</span>
                     </div>
                 `;
             }).join('');
@@ -759,12 +1015,10 @@
             `;
             killfeedContainer.prepend(toast);
 
-            // Limit to 4 visible toasts
             while (killfeedContainer.children.length > 4) {
                 killfeedContainer.lastElementChild.remove();
             }
 
-            // Auto fade out after 4 seconds
             setTimeout(() => {
                 toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
                 toast.style.opacity = '0';
@@ -773,8 +1027,38 @@
             }, 4000);
         }
 
-        // --- 6. Client Input Loop (30 Hz Authoritative Rate) ---
+        // Helper Toast Notification for Gameplay Feedback
+        function showActionToast(msg, isWarn = false) {
+            const toast = document.createElement('div');
+            toast.className = 'kill-toast';
+            toast.style.borderLeftColor = isWarn ? '#f59e0b' : '#38bdf8';
+            toast.innerHTML = `<span style="color: ${isWarn ? '#fbbf24' : '#38bdf8'}; font-weight: 600;">${msg}</span>`;
+            killfeedContainer.prepend(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(60px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        // --- 6. Client Input & Action Loop (30 Hz Authoritative Rate with Delayed Dispatch) ---
         let inputSeq = 1;
+
+        function sendDelayedBuffer(buffer) {
+            if (ws.readyState !== WebSocket.OPEN) return;
+            if (simLatency <= 0 && simJitter <= 0) {
+                ws.send(buffer);
+                return;
+            }
+            const jitterOffset = (Math.random() * 2 - 1) * simJitter;
+            const delay = Math.max(0, (simLatency / 2) + jitterOffset);
+            setTimeout(() => {
+                if (ws.readyState === WebSocket.OPEN) ws.send(buffer);
+            }, delay);
+        }
+
+        // Input Dispatch Loop (Steering Input 0x01)
         setInterval(() => {
             if (ws.readyState !== WebSocket.OPEN) return;
 
@@ -788,7 +1072,7 @@
             view.setFloat32(5, worldTargetX, true);
             view.setFloat32(9, worldTargetY, true);
 
-            ws.send(buffer);
+            sendDelayedBuffer(buffer);
         }, 1000 / 30);
 
         window.addEventListener('mousemove', (e) => {
@@ -796,7 +1080,81 @@
             mousePos.y = e.clientY;
         });
 
-        // --- 7. Server Bot Swarm Controller (Clean Backend Goroutines) ---
+        // Action Trigger Functions (Split 0x01 & Eject 0x02)
+        let lastSplitTime = 0;
+        function triggerSplit() {
+            const now = performance.now();
+            if (now - lastSplitTime < 300) return;
+            lastSplitTime = now;
+
+            // Check if player has at least one cell with mass >= 20 kg
+            let eligible = false;
+            for (let [_, ent] of entities) {
+                if (ent.isMe && ent.mass >= 20.0) {
+                    eligible = true;
+                    break;
+                }
+            }
+            if (!eligible) {
+                showActionToast("⚠️ Masa < 20 kg: Se requiere mínimo 20 kg para división (Split)", true);
+                return;
+            }
+
+            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2);
+            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2);
+
+            const buffer = new ArrayBuffer(10);
+            const view = new DataView(buffer);
+            view.setUint8(0, 0x06); // MsgClientAction
+            view.setUint8(1, 0x01); // ActionSplit
+            view.setFloat32(2, worldTargetX, true);
+            view.setFloat32(6, worldTargetY, true);
+
+            sendDelayedBuffer(buffer);
+            showActionToast("⚡ División celular ejecutada (Impulso + recombinación 15s)");
+        }
+
+        let lastEjectTime = 0;
+        function triggerEject() {
+            const now = performance.now();
+            if (now - lastEjectTime < 100) return;
+            lastEjectTime = now;
+
+            let eligible = false;
+            for (let [_, ent] of entities) {
+                if (ent.isMe && ent.mass >= 13.0) {
+                    eligible = true;
+                    break;
+                }
+            }
+            if (!eligible) {
+                showActionToast("⚠️ Masa insuficiente para eyectar (mínimo 13 kg)", true);
+                return;
+            }
+
+            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2);
+            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2);
+
+            const buffer = new ArrayBuffer(10);
+            const view = new DataView(buffer);
+            view.setUint8(0, 0x06); // MsgClientAction
+            view.setUint8(1, 0x02); // ActionEject
+            view.setFloat32(2, worldTargetX, true);
+            view.setFloat32(6, worldTargetY, true);
+
+            sendDelayedBuffer(buffer);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                e.preventDefault();
+                triggerSplit();
+            } else if (e.code === 'KeyW' || e.key === 'w' || e.key === 'W') {
+                triggerEject();
+            }
+        });
+
+        // --- 7. Server Bot Swarm Controller ---
         let botsActive = false;
         async function toggleBots() {
             const btn = document.getElementById('btn-bots');
@@ -817,7 +1175,7 @@
             }
         }
 
-        // --- 8. Render Loop with Framerate-Independent Smooth Interpolation ---
+        // --- 8. Render Loop with Client-Side Prediction, Lerp & Netcode Inspector Ghost ---
         let frameCount = 0;
         let lastFpsUpdate = performance.now();
         let lastFrameTime = performance.now();
@@ -842,18 +1200,71 @@
             // Framerate-independent lerp factor (60 FPS smooth glide)
             const lerpFactor = 1.0 - Math.pow(0.0005, dt);
 
-            // Interpolate entities
+            // Target World coordinates under mouse cursor
+            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2);
+            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2);
+
+            let maxLocalDrift = 0;
+
+            // Interpolate & Predict Entities
             for (let [id, e] of entities) {
-                e.currentX += (e.targetX - e.currentX) * lerpFactor;
-                e.currentY += (e.targetY - e.currentY) * lerpFactor;
-                e.currentRadius += (e.targetRadius - e.currentRadius) * lerpFactor;
+                if (e.isMe) {
+                    // Client-Side Prediction: simulate velocity towards cursor immediately
+                    const dx = worldTargetX - e.currentX;
+                    const dy = worldTargetY - e.currentY;
+                    const dist = Math.hypot(dx, dy);
+
+                    const speed = Math.max(60.0, 160.0 / Math.pow(e.mass / 10.0, 0.16));
+                    if (dist > 5.0) {
+                        e.currentX += (dx / dist) * speed * dt;
+                        e.currentY += (dy / dist) * speed * dt;
+                    }
+
+                    // Soft Authoritative Reconciliation: blend gently towards server target
+                    e.currentX += (e.targetX - e.currentX) * 0.16;
+                    e.currentY += (e.targetY - e.currentY) * 0.16;
+                    e.currentRadius += (e.targetRadius - e.currentRadius) * lerpFactor;
+
+                    // Clamp to world
+                    e.currentX = Math.max(15, Math.min(2985, e.currentX));
+                    e.currentY = Math.max(15, Math.min(2985, e.currentY));
+
+                    // Compute drift vs Authoritative Server Snapshot
+                    const cellDrift = Math.hypot(e.currentX - e.serverX, e.currentY - e.serverY);
+                    if (cellDrift > maxLocalDrift) maxLocalDrift = cellDrift;
+                } else {
+                    // Remote Entities: standard smooth Lerp between snapshots
+                    e.currentX += (e.targetX - e.currentX) * lerpFactor;
+                    e.currentY += (e.targetY - e.currentY) * lerpFactor;
+                    e.currentRadius += (e.targetRadius - e.currentRadius) * lerpFactor;
+                }
             }
 
-            // Camera follow
-            const me = entities.get(myID);
-            if (me) {
-                myPos.x += (me.currentX - myPos.x) * 0.15;
-                myPos.y += (me.currentY - myPos.y) * 0.15;
+            // Update Netcode Drift Badge on HUD
+            currentDrift = maxLocalDrift;
+            driftBadge.innerText = `Drift: ${currentDrift.toFixed(1)}px`;
+            if (currentDrift > 50) {
+                driftBadge.className = 'drift-badge drift-alert';
+            } else if (currentDrift > 20) {
+                driftBadge.className = 'drift-badge drift-warn';
+            } else {
+                driftBadge.className = 'drift-badge';
+            }
+
+            // Camera follow: Centroid of all player cells
+            let centroidX = 0, centroidY = 0, myCellCount = 0;
+            for (let [_, e] of entities) {
+                if (e.isMe) {
+                    centroidX += e.currentX;
+                    centroidY += e.currentY;
+                    myCellCount++;
+                }
+            }
+            if (myCellCount > 0) {
+                centroidX /= myCellCount;
+                centroidY /= myCellCount;
+                myPos.x += (centroidX - myPos.x) * 0.15;
+                myPos.y += (centroidY - myPos.y) * 0.15;
             }
 
             const camX = canvas.width / 2 - myPos.x;
@@ -862,7 +1273,7 @@
             ctx.save();
             ctx.translate(camX, camY);
 
-            // A. Spatial Hash Grid (150px Cell Size) with Glowing Intersections
+            // A. Spatial Hash Grid (150px Cell Size) with Coordinate Labels
             const gridSize = 150;
             ctx.strokeStyle = 'rgba(30, 41, 59, 0.45)';
             ctx.lineWidth = 1;
@@ -880,7 +1291,6 @@
                 ctx.stroke();
             }
 
-            // Subtle spatial cell coordinate labels
             ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
             ctx.font = '9px JetBrains Mono';
             for (let x = 0; x < 3000; x += gridSize * 2) {
@@ -913,7 +1323,6 @@
                 ctx.fillStyle = p.color;
                 ctx.fill();
 
-                // Core highlight
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, currentRadius * 0.4, 0, Math.PI * 2);
                 ctx.fillStyle = '#ffffff';
@@ -939,9 +1348,49 @@
                 ctx.globalAlpha = 1.0;
             }
 
-            // D. Render Entities with Radial Gradients & Glow Halos
+            // D. Authoritative Server Snapshot Ghosting (Netcode Inspector)
+            if (showGhost) {
+                for (let [_, e] of entities) {
+                    if (e.isMe) {
+                        const cellDrift = Math.hypot(e.currentX - e.serverX, e.currentY - e.serverY);
+                        if (cellDrift > 4.0 || simLatency > 0) {
+                            ctx.save();
+                            // Dotted Vector line connecting server snapshot to local predicted cell
+                            ctx.setLineDash([4, 4]);
+                            ctx.strokeStyle = 'rgba(245, 158, 11, 0.65)';
+                            ctx.lineWidth = 1.5;
+                            ctx.beginPath();
+                            ctx.moveTo(e.serverX, e.serverY);
+                            ctx.lineTo(e.currentX, e.currentY);
+                            ctx.stroke();
+
+                            // Ghost Circle at Server Authoritative Position
+                            ctx.strokeStyle = '#fbbf24';
+                            ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.arc(e.serverX, e.serverY, e.targetRadius, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.stroke();
+
+                            // Server Snapshot Tag
+                            ctx.font = '700 9px JetBrains Mono';
+                            ctx.textAlign = 'center';
+                            ctx.fillStyle = '#fbbf24';
+                            ctx.fillText(`[Authoritative Snapshot]`, e.serverX, e.serverY - e.targetRadius - 12);
+                            ctx.font = '500 8px JetBrains Mono';
+                            ctx.fillStyle = '#fde68a';
+                            ctx.fillText(`Δ: ${cellDrift.toFixed(1)}px (Lerp Reconciled)`, e.serverX, e.serverY - e.targetRadius - 2);
+
+                            ctx.restore();
+                        }
+                    }
+                }
+            }
+
+            // E. Render Entities with Radial Gradients & Glow Halos
             for (let [id, e] of entities) {
-                const isMe = id === myID;
+                const isMe = e.isMe;
                 const r = e.currentRadius;
 
                 ctx.save();
@@ -990,6 +1439,12 @@
                 ctx.font = '500 9px JetBrains Mono';
                 ctx.fillStyle = '#94a3b8';
                 ctx.fillText(`[${e.mass.toFixed(0)} kg]`, e.currentX, e.currentY - r - 1);
+
+                if (isMe && (simLatency > 0 || currentDrift > 4.0)) {
+                    ctx.font = '600 8px JetBrains Mono';
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.fillText('[Client Predicted]', e.currentX, e.currentY + r + 13);
+                }
                 ctx.restore();
             }
 
@@ -1002,14 +1457,12 @@
         function renderRadar() {
             radarCtx.clearRect(0, 0, 140, 140);
 
-            // Radar background circle
             radarCtx.save();
             radarCtx.beginPath();
             radarCtx.arc(70, 70, 68, 0, Math.PI * 2);
             radarCtx.fillStyle = '#060a12';
             radarCtx.fill();
 
-            // Concentric range circles
             radarCtx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
             radarCtx.lineWidth = 1;
             [22, 44, 65].forEach(r => {
@@ -1018,7 +1471,6 @@
                 radarCtx.stroke();
             });
 
-            // Crosshair lines
             radarCtx.beginPath();
             radarCtx.moveTo(70, 5); radarCtx.lineTo(70, 135);
             radarCtx.moveTo(5, 70); radarCtx.lineTo(135, 70);
@@ -1026,7 +1478,6 @@
 
             const mapScale = 140 / 3000;
 
-            // Viewport Sector indicator (quadrant)
             const vpW = (canvas.width * mapScale);
             const vpH = (canvas.height * mapScale);
             const vpX = (myPos.x * mapScale) - vpW / 2;
@@ -1037,11 +1488,10 @@
             radarCtx.strokeRect(vpX, vpY, vpW, vpH);
             radarCtx.fillRect(vpX, vpY, vpW, vpH);
 
-            // Blip Entities
             for (let [id, e] of entities) {
                 const bx = e.currentX * mapScale;
                 const by = e.currentY * mapScale;
-                const isMe = id === myID;
+                const isMe = e.isMe;
 
                 radarCtx.beginPath();
                 radarCtx.arc(bx, by, isMe ? 3.5 : 2, 0, Math.PI * 2);
