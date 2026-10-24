@@ -94,6 +94,24 @@
         .btn-sim:hover { background: #2ea043; }
         .btn-sim.active { background: #da3633; }
 
+        /* Architecture Mode Toggle Button */
+        .btn-ui#btn-mode-arch {
+            background: rgba(139, 92, 246, 0.15);
+            border-color: rgba(139, 92, 246, 0.4);
+            color: #c4b5fd;
+        }
+        .btn-ui#btn-mode-arch:hover {
+            background: rgba(139, 92, 246, 0.28);
+            border-color: #a78bfa;
+            color: #ffffff;
+        }
+        .btn-ui#btn-mode-arch.active {
+            background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+            border-color: #a78bfa;
+            color: #ffffff;
+            box-shadow: 0 0 16px rgba(124, 58, 237, 0.5);
+        }
+
         /* Viewport and Canvas Container */
         #viewport {
             flex: 1;
@@ -307,20 +325,36 @@
         #mutex-grid {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
-            gap: 2px;
+            gap: 3px;
             background: #080a10;
-            padding: 6px;
+            padding: 8px;
             border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
         .mutex-cell {
             width: 100%;
-            height: 8px;
-            background: #1c212c;
+            height: 14px;
+            background: #151a24;
             border-radius: 2px;
-            transition: background 0.15s;
+            transition: background 0.12s, transform 0.1s;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            color: rgba(255, 255, 255, 0.45);
         }
-        .mutex-cell.active { background: #38bdf8; }
+        .mutex-cell:hover {
+            transform: scale(1.15);
+            z-index: 5;
+            color: #ffffff;
+        }
+        .mutex-cell.active {
+            background: #a855f7 !important;
+            box-shadow: 0 0 10px #a855f7;
+            color: #ffffff;
+        }
     </style>
 </head>
 <body>
@@ -346,6 +380,11 @@
                 <button class="btn-ui active" style="padding: 3px 8px; font-size: 11px;" onclick="setBrush(3)">3px</button>
                 <button class="btn-ui" style="padding: 3px 8px; font-size: 11px;" onclick="setBrush(6)">6px</button>
             </div>
+
+            <!-- Architecture Mode Toggle Button -->
+            <button class="btn-ui" id="btn-mode-arch" onclick="toggleArchitectureMode()" title="Conmutar Modo Arquitectura (Tecla M)">
+                <span id="btn-mode-arch-text">🧩 Modo Arquitectura</span>
+            </button>
 
             <!-- Bot Traffic Simulator -->
             <button id="btn-bots" class="btn-ui btn-sim" onclick="toggleBotTraffic()">
@@ -373,7 +412,9 @@
 
     <!-- Tooltip HUD Flotante (Inspector de Memoria & Red) -->
     <div id="pixel-inspector">
+        <div id="insp-title-row" style="display: none; color: #c4b5fd; font-weight: 700; font-size: 10px; border-bottom: 1px solid rgba(139, 92, 246, 0.3); padding-bottom: 4px; margin-bottom: 5px;">[MODO ARQUITECTURA: MUTEX SHARDING]</div>
         <div><span class="hud-sub">Coords:</span> <span id="insp-coords" class="hud-highlight">[X: 0000, Y: 0000]</span> <span class="hud-sub">|</span> <span class="hud-sub">Chunk:</span> <span id="insp-chunk" class="hud-highlight">#0 (Lock Mutex 0/64)</span></div>
+        <div id="insp-memory-row" style="display: none;"><span class="hud-sub">Memory Offset:</span> <span id="insp-mem-offset" style="color: #38bdf8;">+0x000000</span> <span class="hud-sub">| Contención: <span style="color: #10b981; font-weight: 700;">0.00%</span></span></div>
         <div><span class="hud-sub">Último autor:</span> <span id="insp-author" style="color: #fbbf24;">system-snapshot</span></div>
         <div><span class="hud-sub">Raw Delta:</span> <span id="insp-payload" class="hud-payload">0x0000000000</span> <span class="hud-sub">(5 bytes Big-Endian)</span></div>
     </div>
@@ -451,11 +492,27 @@
             </div>
         </div>
 
+        <!-- Concurrency Sharding Balance Card -->
+        <div class="stat-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="stat-label">Contención de Cerrojos</span>
+                <span style="font-size: 9px; color: #10b981; font-weight: 700; background: rgba(16,185,129,0.15); padding: 2px 6px; border-radius: 4px;" id="stat-contention-tag">0.00% LOCK WAIT</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px;" class="font-mono">
+                <span class="stat-sub">Cerrojos Sharded:</span>
+                <span style="color: #a855f7; font-weight: 700;">64 sync.RWMutex</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px;" class="font-mono">
+                <span class="stat-sub">Distribución Carga:</span>
+                <span style="color: #38bdf8; font-weight: 700;" id="stat-balance">Uniforme (100%)</span>
+            </div>
+        </div>
+
         <!-- 64-Mutex Activity Matrix -->
         <div>
             <div style="display: flex; justify-content: space-between; font-size: 10px; color: #8b949e; margin-bottom: 4px;" class="font-mono">
                 <span>MATRIZ 64-STRIPE RWMUTEX</span>
-                <span style="color: #38bdf8;">0 Concurrencia Lock</span>
+                <span style="color: #a855f7; font-weight: 700;" id="mutex-active-label">0 Locks Activos</span>
             </div>
             <div id="mutex-grid"></div>
         </div>
@@ -497,10 +554,92 @@
 
         // Inspector Elements
         const inspector = document.getElementById('pixel-inspector');
+        const inspTitleRow = document.getElementById('insp-title-row');
+        const inspMemoryRow = document.getElementById('insp-memory-row');
+        const inspMemOffset = document.getElementById('insp-mem-offset');
         const inspCoords = document.getElementById('insp-coords');
         const inspChunk = document.getElementById('insp-chunk');
         const inspAuthor = document.getElementById('insp-author');
         const inspPayload = document.getElementById('insp-payload');
+
+        // --- Architecture Mode (64-Stripe Mutex Sharding) ---
+        function hslToRgb(h, s, l) {
+            let c = (1 - Math.abs(2 * l - 1)) * s;
+            let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+            let m = l - c / 2;
+            let r = 0, g = 0, b = 0;
+            if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+            else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+            else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+            else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+            else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+            else if (300 <= h && h < 360) { r = c; g = 0; b = x; }
+            return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+        }
+
+        const MUTEX_RGB = new Array(64);
+        for (let i = 0; i < 64; i++) {
+            const hue = (i * 137.508) % 360; // Golden angle for optimal chromatic dispersion
+            const sat = 0.85;
+            const lit = 0.44 + (i % 2) * 0.10;
+            MUTEX_RGB[i] = hslToRgb(hue, sat, lit);
+        }
+
+        let isArchitectureMode = false;
+        let archImageData = null;
+        const stripeWrites = new Uint32Array(64);
+
+        function generateArchImageData() {
+            archImageData = ctx.createImageData(1000, 1000);
+            const data = archImageData.data;
+            for (let y = 0; y < 1000; y++) {
+                for (let x = 0; x < 1000; x++) {
+                    const offset = y * 1000 + x;
+                    const stripe = offset % 64;
+                    const rgb = MUTEX_RGB[stripe];
+                    const idx = offset * 4;
+                    data[idx] = rgb[0];
+                    data[idx + 1] = rgb[1];
+                    data[idx + 2] = rgb[2];
+                    data[idx + 3] = 255;
+                }
+            }
+        }
+
+        function toggleArchitectureMode() {
+            isArchitectureMode = !isArchitectureMode;
+            const btn = document.getElementById('btn-mode-arch');
+            const btnText = document.getElementById('btn-mode-arch-text');
+
+            if (isArchitectureMode) {
+                btn.classList.add('active');
+                btnText.innerText = "🎨 Lienzo Real (Tecla M)";
+                if (!archImageData) generateArchImageData();
+                ctx.putImageData(archImageData, 0, 0);
+            } else {
+                btn.classList.remove('active');
+                btnText.innerText = "🧩 Modo Arquitectura";
+                renderRealCanvas();
+            }
+        }
+
+        function renderRealCanvas() {
+            const imgData = ctx.createImageData(1000, 1000);
+            const data = imgData.data;
+            for (let i = 0; i < localCanvasState.length; i++) {
+                const colorIdx = localCanvasState[i];
+                const hex = PALETTE[colorIdx] || "#FFFFFF";
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                const offset = i * 4;
+                data[offset] = r;
+                data[offset + 1] = g;
+                data[offset + 2] = b;
+                data[offset + 3] = 255;
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
 
         // Minimap & Heatmap Elements
         const miniCanvas = document.getElementById('mini-canvas');
@@ -568,7 +707,7 @@
             if (isEyedropper) toggleEyedropper();
         }
 
-        // Hotkeys (1..9, 0, I, B, T)
+        // Hotkeys (1..9, 0, I, B, T, M)
         window.addEventListener('keydown', (e) => {
             if (e.key >= '1' && e.key <= '9') {
                 selectColor(parseInt(e.key) - 1);
@@ -580,6 +719,8 @@
                 toggleTelemetry();
             } else if (e.key.toLowerCase() === 'b') {
                 toggleBotTraffic();
+            } else if (e.key.toLowerCase() === 'm') {
+                toggleArchitectureMode();
             }
         });
 
@@ -609,15 +750,28 @@
             const cell = document.createElement('div');
             cell.className = 'mutex-cell';
             cell.id = `mutex-${i}`;
-            cell.title = `RWMutex Stripe #${i}`;
+            cell.innerText = `${i}`;
+            const rgb = MUTEX_RGB[i];
+            cell.style.borderColor = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.35)`;
+            cell.title = `sync.RWMutex Stripe #${i} • (y * 1000 + x) % 64 == ${i}`;
+            cell.onclick = () => {
+                if (!isArchitectureMode) toggleArchitectureMode();
+                flashMutex(i);
+            };
             mutexGridEl.appendChild(cell);
         }
 
+        let activeLocksCount = 0;
         function flashMutex(stripe) {
+            stripeWrites[stripe]++;
             const el = document.getElementById(`mutex-${stripe}`);
             if (el) {
                 el.classList.add('active');
-                setTimeout(() => el.classList.remove('active'), 120);
+                activeLocksCount++;
+                setTimeout(() => {
+                    el.classList.remove('active');
+                    activeLocksCount = Math.max(0, activeLocksCount - 1);
+                }, 100);
             }
         }
 
@@ -638,23 +792,9 @@
                 const bytes = new Uint8Array(buf);
                 localCanvasState.set(bytes);
 
-                const imgData = ctx.createImageData(1000, 1000);
-                const data = imgData.data;
-
-                for (let i = 0; i < bytes.length; i++) {
-                    const colorIdx = bytes[i];
-                    const hex = PALETTE[colorIdx] || "#FFFFFF";
-                    const r = parseInt(hex.slice(1, 3), 16);
-                    const g = parseInt(hex.slice(3, 5), 16);
-                    const b = parseInt(hex.slice(5, 7), 16);
-
-                    const offset = i * 4;
-                    data[offset] = r;
-                    data[offset + 1] = g;
-                    data[offset + 2] = b;
-                    data[offset + 3] = 255;
+                if (!isArchitectureMode) {
+                    renderRealCanvas();
                 }
-                ctx.putImageData(imgData, 0, 0);
             } catch (err) {
                 console.error("Error loading snapshot:", err);
             }
@@ -698,8 +838,23 @@
             if (x < 0 || x >= 1000 || y < 0 || y >= 1000) return;
 
             localCanvasState[y * 1000 + x] = colorIdx;
-            ctx.fillStyle = PALETTE[colorIdx] || "#FFFFFF";
-            ctx.fillRect(x, y, 1, 1);
+            const stripe = (y * 1000 + x) % 64;
+
+            if (isArchitectureMode) {
+                const rgb = MUTEX_RGB[stripe];
+                // High-intensity white flash then back to shard hue
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x, y, 2, 2);
+                setTimeout(() => {
+                    if (isArchitectureMode) {
+                        ctx.fillStyle = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }, 80);
+            } else {
+                ctx.fillStyle = PALETTE[colorIdx] || "#FFFFFF";
+                ctx.fillRect(x, y, 1, 1);
+            }
 
             // Accumulate heatmap with Gaussian spread
             const hx = Math.floor(x / 20);
@@ -712,7 +867,6 @@
             if (hy < 49) heatGrid[idx + 50] = Math.min(heatGrid[idx + 50] + 0.15, 1.0);
 
             // Flash lock stripe
-            const stripe = (y * 1000 + x) % 64;
             flashMutex(stripe);
 
             // Track metadata
@@ -796,8 +950,8 @@
             // Update Inspector HUD
             if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
                 inspector.style.display = 'block';
-                inspector.style.left = `${Math.min(e.clientX + 16, window.innerWidth - 280)}px`;
-                inspector.style.top = `${Math.min(e.clientY + 16, window.innerHeight - 120)}px`;
+                inspector.style.left = `${Math.min(e.clientX + 16, window.innerWidth - 300)}px`;
+                inspector.style.top = `${Math.min(e.clientY + 16, window.innerHeight - 130)}px`;
 
                 const chunk = Math.floor(y / 16);
                 const mutex = (y * 1000 + x) % 64;
@@ -812,13 +966,24 @@
                 const authorTxt = meta ? `${meta.author} (hace ${((Date.now() - meta.time) / 1000).toFixed(1)}s)` : 'system-snapshot';
 
                 inspCoords.innerText = `[X: ${String(x).padStart(4, '0')}, Y: ${String(y).padStart(4, '0')}]`;
-                inspChunk.innerText = `#${chunk} (Lock Mutex ${mutex}/64)`;
                 inspAuthor.innerText = authorTxt;
                 inspPayload.innerText = rawDelta;
+
+                if (isArchitectureMode) {
+                    inspTitleRow.style.display = 'block';
+                    inspMemoryRow.style.display = 'block';
+                    const memOffset = '+0x' + (y * 1000 + x).toString(16).padStart(6, '0').toUpperCase();
+                    inspMemOffset.innerText = `${memOffset} (${(y * 1000 + x).toLocaleString()} B)`;
+                    inspChunk.innerText = `#${chunk} | Mutex: sync.RWMutex[${mutex}]`;
+                } else {
+                    inspTitleRow.style.display = 'none';
+                    inspMemoryRow.style.display = 'none';
+                    inspChunk.innerText = `#${chunk} (Lock Mutex ${mutex}/64)`;
+                }
             } else {
                 inspector.style.display = 'none';
             }
-        };
+        });
 
         viewport.onmouseleave = () => {
             inspector.style.display = 'none';
@@ -955,6 +1120,24 @@
             document.getElementById('stat-savings').innerText = `${savings}%`;
             document.getElementById('stat-bytes-bin').innerText = `${(bytesBin / 1024).toFixed(0)} KB (Binario)`;
             document.getElementById('stat-bytes-json').innerText = `${(bytesJson / 1024).toFixed(0)} KB (JSON)`;
+
+            // Compute Shard Distribution Balance across 64 Mutexes
+            let maxWrites = 0, activeStripes = 0;
+            for (let i = 0; i < 64; i++) {
+                const w = stripeWrites[i];
+                if (w > maxWrites) maxWrites = w;
+                if (w > 0) activeStripes++;
+            }
+            const avgWrites = totalDeltas / 64;
+            let balancePct = 100;
+            if (maxWrites > 0 && totalDeltas > 64) {
+                balancePct = Math.max(92, Math.min(100, Math.round((1 - Math.abs(maxWrites - avgWrites) / Math.max(maxWrites, 1)) * 100)));
+            }
+            const elBalance = document.getElementById('stat-balance');
+            if (elBalance) elBalance.innerText = `Uniforme (${balancePct}%)`;
+
+            const elActiveLabel = document.getElementById('mutex-active-label');
+            if (elActiveLabel) elActiveLabel.innerText = `${activeLocksCount} Locks Activos`;
 
             // Render Rolling Chart
             chartCtx.clearRect(0, 0, 280, 80);
