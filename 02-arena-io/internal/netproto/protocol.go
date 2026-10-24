@@ -11,6 +11,9 @@ const (
 	MsgWelcome      uint8 = 0x00
 	MsgClientInput  uint8 = 0x01
 	MsgServerUpdate uint8 = 0x02
+	MsgFoodInit     uint8 = 0x03
+	MsgFoodEaten    uint8 = 0x04
+	MsgKillEvent    uint8 = 0x05
 	HeaderSize            = 11
 	EntityRecordLen       = 18
 	MaxPacketSize         = 4096
@@ -94,4 +97,67 @@ func EncodeSnapshot(dst []byte, serverTick uint32, ackSeq uint32, entities []Ent
 	}
 
 	return dst[:requiredLen], nil
+}
+
+type FoodPelletNet struct {
+	X        uint16
+	Y        uint16
+	ColorIdx uint8
+}
+
+func EncodeFoodInit(dst []byte, pellets []FoodPelletNet) []byte {
+	needed := 3 + len(pellets)*5
+	if len(dst) < needed {
+		dst = make([]byte, needed)
+	}
+	dst[0] = MsgFoodInit
+	binary.LittleEndian.PutUint16(dst[1:3], uint16(len(pellets)))
+	offset := 3
+	for _, p := range pellets {
+		binary.LittleEndian.PutUint16(dst[offset:offset+2], p.X)
+		binary.LittleEndian.PutUint16(dst[offset+2:offset+4], p.Y)
+		dst[offset+4] = p.ColorIdx
+		offset += 5
+	}
+	return dst[:needed]
+}
+
+type FoodEaten struct {
+	Index uint16
+	NewX  uint16
+	NewY  uint16
+}
+
+func EncodeFoodEaten(dst []byte, eaten []FoodEaten) []byte {
+	needed := 2 + len(eaten)*6
+	if len(dst) < needed {
+		dst = make([]byte, needed)
+	}
+	dst[0] = MsgFoodEaten
+	dst[1] = uint8(len(eaten))
+	offset := 2
+	for _, e := range eaten {
+		binary.LittleEndian.PutUint16(dst[offset:offset+2], e.Index)
+		binary.LittleEndian.PutUint16(dst[offset+2:offset+4], e.NewX)
+		binary.LittleEndian.PutUint16(dst[offset+4:offset+6], e.NewY)
+		offset += 6
+	}
+	return dst[:needed]
+}
+
+type KillEvent struct {
+	WinnerID uint32
+	VictimID uint32
+	Points   uint16
+}
+
+func EncodeKillEvent(dst []byte, winnerID, victimID uint32, points uint16) []byte {
+	if len(dst) < 11 {
+		dst = make([]byte, 11)
+	}
+	dst[0] = MsgKillEvent
+	binary.LittleEndian.PutUint32(dst[1:5], winnerID)
+	binary.LittleEndian.PutUint32(dst[5:9], victimID)
+	binary.LittleEndian.PutUint16(dst[9:11], points)
+	return dst[:11]
 }

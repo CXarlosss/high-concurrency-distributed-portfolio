@@ -508,14 +508,14 @@
         }
 
         // --- 2. Game State & Interpolation Buffers ---
-        const entities = new Map(); // ID -> { targetX, targetY, currentX, currentY, radius, mass, color, name, isMe }
+        const entities = new Map(); // ID -> { targetX, targetY, currentX, currentY, targetRadius, radius, mass, color, name, isMe }
         let serverTick = 0;
         let lastAckSeq = 0;
         let myID = 0;
         let myPos = { x: 1500, y: 1500 };
         let mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
-        // 180 Vibrant Cyberpunk Energy Pellets
+        // Food Pellets & Palette
         const pellets = [];
         const PELLET_PALETTES = [
             { color: '#00f0ff', glow: 'rgba(0, 240, 255, 0.4)' }, // Cyan
@@ -525,16 +525,21 @@
             { color: '#9d4edd', glow: 'rgba(157, 78, 221, 0.4)' }  // Ultraviolet
         ];
 
-        for (let i = 0; i < 180; i++) {
-            const p = PELLET_PALETTES[i % PELLET_PALETTES.length];
-            pellets.push({
-                x: 80 + Math.random() * 2840,
-                y: 80 + Math.random() * 2840,
-                color: p.color,
-                glow: p.glow,
-                baseRadius: 3 + Math.random() * 2.5,
-                phase: Math.random() * Math.PI * 2
-            });
+        // Eat burst particles
+        const particles = [];
+        function createEatParticle(x, y, color) {
+            for (let i = 0; i < 4; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 20 + Math.random() * 40;
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd,
+                    color: color,
+                    alpha: 1.0,
+                    size: 2 + Math.random() * 2
+                });
+            }
         }
 
         // --- 3. Netcode WebSocket Client ---
@@ -556,7 +561,7 @@
 
         ws.onmessage = (e) => {
             const data = new Uint8Array(e.data);
-            if (data.length < 5) return;
+            if (data.length < 1) return;
 
             const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
             const msgType = view.getUint8(0);
@@ -565,6 +570,60 @@
             if (msgType === 0x00) {
                 myID = view.getUint32(1, true);
                 console.log("[Arena] Assigned Authoritative Player ID:", myID);
+                return;
+            }
+
+            // 0x03: Authoritative Food Init Packet
+            if (msgType === 0x03 && data.length >= 3) {
+                const count = view.getUint16(1, true);
+                pellets.length = 0;
+                let offset = 3;
+                for (let i = 0; i < count; i++) {
+                    if (offset + 5 > data.length) break;
+                    const px = view.getUint16(offset, true);
+                    const py = view.getUint16(offset + 2, true);
+                    const cIdx = view.getUint8(offset + 4);
+                    offset += 5;
+                    const pConfig = PELLET_PALETTES[cIdx % PELLET_PALETTES.length];
+                    pellets.push({
+                        x: px, y: py,
+                        color: pConfig.color,
+                        glow: pConfig.glow,
+                        baseRadius: 3.5,
+                        phase: Math.random() * Math.PI * 2
+                    });
+                }
+                return;
+            }
+
+            // 0x04: Authoritative Food Eaten Event
+            if (msgType === 0x04 && data.length >= 2) {
+                const count = view.getUint8(1);
+                let offset = 2;
+                for (let i = 0; i < count; i++) {
+                    if (offset + 6 > data.length) break;
+                    const idx = view.getUint16(offset, true);
+                    const nx = view.getUint16(offset + 2, true);
+                    const ny = view.getUint16(offset + 4, true);
+                    offset += 6;
+                    if (pellets[idx]) {
+                        createEatParticle(pellets[idx].x, pellets[idx].y, pellets[idx].color);
+                        pellets[idx].x = nx;
+                        pellets[idx].y = ny;
+                    }
+                }
+                return;
+            }
+
+            // 0x05: Authoritative Kill Event
+            if (msgType === 0x05 && data.length >= 11) {
+                const winnerID = view.getUint32(1, true);
+                const victimID = view.getUint32(5, true);
+                const pts = view.getUint16(9, true);
+
+                const winner = getEntityIdentity(winnerID);
+                const victim = getEntityIdentity(victimID);
+                pushKillfeed(winner.name, victim.name, pts);
                 return;
             }
 
@@ -606,42 +665,24 @@
                     entities.set(id, {
                         currentX: x, currentY: y,
                         targetX: x, targetY: y,
-                        radius: radius, mass: mass,
+                        currentRadius: radius, targetRadius: radius,
+                        mass: mass,
                         color: meta.color,
                         name: meta.name,
                         isMe: meta.isMe
                     });
                 } else {
                     const ent = entities.get(id);
-                    // Check if absorbed / mass jump
-                    if (mass > ent.mass + 3.0 && ent.isMe) {
-                        pushKillfeed("⭐ Player-Core", "bot-target", Math.floor((mass - ent.mass) * 10));
-                    }
                     ent.targetX = x;
                     ent.targetY = y;
-                    ent.radius = radius;
+                    ent.targetRadius = radius;
                     ent.mass = mass;
                 }
             }
 
-            // Check for absorbed entities to trigger Killfeed
-            for (let [id, ent] of entities) {
+            // Remove out-of-AoI entities
+            for (let [id, _] of entities) {
                 if (!activeIDs.has(id)) {
-                    // Entity disappeared: find nearest surviving entity
-                    let nearestPredator = null;
-                    let minDist = 120;
-                    for (let [otherId, other] of entities) {
-                        if (activeIDs.has(otherId) && otherId !== id && other.mass > ent.mass) {
-                            const d = Math.hypot(other.currentX - ent.currentX, other.currentY - ent.currentY);
-                            if (d < minDist) {
-                                minDist = d;
-                                nearestPredator = other;
-                            }
-                        }
-                    }
-                    if (nearestPredator) {
-                        pushKillfeed(nearestPredator.name, ent.name, Math.floor(ent.mass * 10));
-                    }
                     entities.delete(id);
                 }
             }
@@ -732,20 +773,6 @@
             }, 4000);
         }
 
-        // Trigger occasional simulated killfeed battle events when bots engage
-        setInterval(() => {
-            if (entities.size > 3 && Math.random() < 0.25) {
-                const arr = Array.from(entities.values()).filter(e => !e.isMe);
-                if (arr.length >= 2) {
-                    const p1 = arr[Math.floor(Math.random() * arr.length)];
-                    const p2 = arr[Math.floor(Math.random() * arr.length)];
-                    if (p1.name !== p2.name) {
-                        pushKillfeed(p1.name, p2.name, Math.floor(100 + Math.random() * 150));
-                    }
-                }
-            }
-        }, 3500);
-
         // --- 6. Client Input Loop (30 Hz Authoritative Rate) ---
         let inputSeq = 1;
         setInterval(() => {
@@ -769,66 +796,37 @@
             mousePos.y = e.clientY;
         });
 
-        // --- 7. Swarm Bot Controller (20 VUs) ---
-        let botConns = [];
-        function toggleBots() {
+        // --- 7. Server Bot Swarm Controller (Clean Backend Goroutines) ---
+        let botsActive = false;
+        async function toggleBots() {
             const btn = document.getElementById('btn-bots');
-            if (botConns.length > 0) {
-                botConns.forEach(c => {
-                    if (c.interval) clearInterval(c.interval);
-                    c.close();
-                });
-                botConns = [];
-                btn.classList.remove('active');
-                btn.innerText = "⚡ Iniciar 20 Bots Oponentes";
-                return;
-            }
-
-            btn.classList.add('active');
-            btn.innerText = "⏹️ Detener 20 Bots";
-
-            const wsUrl = `${proto}//${location.host}${basePath}/ws`;
-            for (let i = 0; i < 20; i++) {
-                setTimeout(() => {
-                    const bws = new WebSocket(wsUrl);
-                    bws.binaryType = 'arraybuffer';
-
-                    let botSeq = 1;
-                    let targetX = 400 + Math.random() * 2200;
-                    let targetY = 400 + Math.random() * 2200;
-
-                    bws.interval = setInterval(() => {
-                        if (bws.readyState !== WebSocket.OPEN) {
-                            clearInterval(bws.interval);
-                            return;
-                        }
-
-                        // Wander organically toward food clusters
-                        if (Math.random() < 0.08) {
-                            targetX = 200 + Math.random() * 2600;
-                            targetY = 200 + Math.random() * 2600;
-                        }
-
-                        const buf = new ArrayBuffer(13);
-                        const view = new DataView(buf);
-                        view.setUint8(0, 0x01);
-                        view.setUint32(1, botSeq++, true);
-                        view.setFloat32(5, targetX, true);
-                        view.setFloat32(9, targetY, true);
-                        bws.send(buf);
-                    }, 1000 / 30);
-
-                    botConns.push(bws);
-                }, i * 45);
+            try {
+                const res = await fetch(`${basePath}/bots/toggle`, { method: 'POST' });
+                const data = await res.json();
+                if (data.active_bots > 0) {
+                    botsActive = true;
+                    btn.classList.add('active');
+                    btn.innerText = "⏹️ Detener 20 Bots";
+                } else {
+                    botsActive = false;
+                    btn.classList.remove('active');
+                    btn.innerText = "⚡ Iniciar 20 Bots Oponentes";
+                }
+            } catch (err) {
+                console.error("Error toggling bots:", err);
             }
         }
 
-        // --- 8. Render Loop with Geometry Wars / Arcade Styling ---
+        // --- 8. Render Loop with Framerate-Independent Smooth Interpolation ---
         let frameCount = 0;
         let lastFpsUpdate = performance.now();
+        let lastFrameTime = performance.now();
 
         function render(now) {
             requestAnimationFrame(render);
+
+            const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+            lastFrameTime = now;
 
             // FPS Counter
             frameCount++;
@@ -840,6 +838,16 @@
 
             // Clear Screen
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Framerate-independent lerp factor (60 FPS smooth glide)
+            const lerpFactor = 1.0 - Math.pow(0.0005, dt);
+
+            // Interpolate entities
+            for (let [id, e] of entities) {
+                e.currentX += (e.targetX - e.currentX) * lerpFactor;
+                e.currentY += (e.targetY - e.currentY) * lerpFactor;
+                e.currentRadius += (e.targetRadius - e.currentRadius) * lerpFactor;
+            }
 
             // Camera follow
             const me = entities.get(myID);
@@ -911,27 +919,30 @@
                 ctx.fillStyle = '#ffffff';
                 ctx.fill();
                 ctx.restore();
+            }
 
-                // Eat pellet check
-                if (me) {
-                    const dx = me.currentX - p.x;
-                    const dy = me.currentY - p.y;
-                    if (dx*dx + dy*dy < me.radius * me.radius) {
-                        p.x = 80 + Math.random() * 2840;
-                        p.y = 80 + Math.random() * 2840;
-                        me.radius = Math.min(me.radius + 0.25, 60);
-                        me.mass += 0.8;
-                    }
+            // Render Eat Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx * dt;
+                pt.y += pt.vy * dt;
+                pt.alpha -= dt * 2.5;
+                if (pt.alpha <= 0) {
+                    particles.splice(i, 1);
+                    continue;
                 }
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = pt.alpha;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
             }
 
             // D. Render Entities with Radial Gradients & Glow Halos
             for (let [id, e] of entities) {
-                // Smooth Lerp toward authoritative target
-                e.currentX += (e.targetX - e.currentX) * 0.25;
-                e.currentY += (e.targetY - e.currentY) * 0.25;
-
                 const isMe = id === myID;
+                const r = e.currentRadius;
 
                 ctx.save();
                 // Outer Glow Halo
@@ -940,15 +951,15 @@
 
                 // Radial Gradient Body
                 const grad = ctx.createRadialGradient(
-                    e.currentX - e.radius * 0.2, e.currentY - e.radius * 0.2, e.radius * 0.1,
-                    e.currentX, e.currentY, e.radius
+                    e.currentX - r * 0.2, e.currentY - r * 0.2, r * 0.1,
+                    e.currentX, e.currentY, r
                 );
                 grad.addColorStop(0, '#ffffff');
                 grad.addColorStop(0.35, e.color);
                 grad.addColorStop(1, e.color);
 
                 ctx.beginPath();
-                ctx.arc(e.currentX, e.currentY, e.radius, 0, Math.PI * 2);
+                ctx.arc(e.currentX, e.currentY, r, 0, Math.PI * 2);
                 ctx.fillStyle = grad;
                 ctx.fill();
 
@@ -960,7 +971,7 @@
                 // Inner Core Pulse for Local Player
                 if (isMe) {
                     ctx.beginPath();
-                    ctx.arc(e.currentX, e.currentY, e.radius * 0.35, 0, Math.PI * 2);
+                    ctx.arc(e.currentX, e.currentY, r * 0.35, 0, Math.PI * 2);
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
                     ctx.fill();
                 }
@@ -974,11 +985,11 @@
                 ctx.fillStyle = isMe ? '#00f0ff' : '#ffffff';
                 ctx.shadowColor = '#000000';
                 ctx.shadowBlur = 6;
-                ctx.fillText(e.name, e.currentX, e.currentY - e.radius - 10);
+                ctx.fillText(e.name, e.currentX, e.currentY - r - 10);
 
                 ctx.font = '500 9px JetBrains Mono';
                 ctx.fillStyle = '#94a3b8';
-                ctx.fillText(`[${e.mass.toFixed(0)} kg]`, e.currentX, e.currentY - e.radius - 1);
+                ctx.fillText(`[${e.mass.toFixed(0)} kg]`, e.currentX, e.currentY - r - 1);
                 ctx.restore();
             }
 

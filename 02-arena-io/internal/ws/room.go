@@ -91,6 +91,20 @@ func (r *Room) BroadcastSnapshots(serverTick uint32) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
+	// Flush world events
+	eaten, kills := r.world.FlushEvents()
+	var foodPayload []byte
+	if len(eaten) > 0 {
+		foodPayload = netproto.EncodeFoodEaten(nil, eaten)
+	}
+
+	var killPayloads [][]byte
+	if len(kills) > 0 {
+		for _, k := range kills {
+			killPayloads = append(killPayloads, netproto.EncodeKillEvent(nil, k.WinnerID, k.VictimID, k.Points))
+		}
+	}
+
 	if len(r.clients) == 0 {
 		return
 	}
@@ -102,6 +116,23 @@ func (r *Room) BroadcastSnapshots(serverTick uint32) {
 	entityBuf := (*ptrEntity)[:0]
 
 	for client := range r.clients {
+		// 1. Send Food Eaten events if any
+		if len(foodPayload) > 0 {
+			select {
+			case client.send <- foodPayload:
+			default:
+			}
+		}
+
+		// 2. Send Kill events if any
+		for _, kp := range killPayloads {
+			select {
+			case client.send <- kp:
+			default:
+			}
+		}
+
+		// 3. Send visible entities snapshot
 		visible := r.world.GetVisibleEntities(client.playerID, neighborBuf, entityBuf)
 		ackSeq := r.world.LastAckSeq(client.playerID)
 
@@ -112,7 +143,6 @@ func (r *Room) BroadcastSnapshots(serverTick uint32) {
 			continue
 		}
 
-		// Non-blocking write to client channel
 		payload := make([]byte, len(encoded))
 		copy(payload, encoded)
 		netproto.BufferPool.Put(bufPtr)

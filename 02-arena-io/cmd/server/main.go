@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"runtime"
-	"time"
 
 	"github.com/cv-projects/arena-io/internal/game"
 	"github.com/cv-projects/arena-io/internal/netproto"
@@ -53,17 +52,30 @@ func main() {
 
 		playerID := room.NextPlayerID()
 
-		// Send initial authoritative player ID welcome packet (5 bytes: [0x00, ID:uint32 LittleEndian])
+		// 1. Send initial authoritative player ID welcome packet (5 bytes: [0x00, ID:uint32 LittleEndian])
 		welcome := make([]byte, 5)
 		welcome[0] = netproto.MsgWelcome
 		binary.LittleEndian.PutUint32(welcome[1:5], playerID)
 		_ = conn.WriteMessage(websocket.BinaryMessage, welcome)
+
+		// 2. Send initial Food Pellets snapshot (MsgFoodInit: 0x03)
+		foodPayload := netproto.EncodeFoodInit(nil, world.GetFoodPelletsNet())
+		_ = conn.WriteMessage(websocket.BinaryMessage, foodPayload)
 
 		client := ws.NewClient(room, conn, playerID)
 		room.Register(client)
 
 		go client.WritePump()
 		go client.ReadPump(world)
+	})
+
+	http.HandleFunc("/bots/toggle", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+		count := world.ToggleBots()
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"active_bots": count,
+		})
 	})
 
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
@@ -99,14 +111,8 @@ func main() {
 	// Serve visual game client
 	http.Handle("/", http.FileServer(http.Dir("./web")))
 
-	port := ":8081"
-	log.Printf("[Server] Arena .io game server listening on %s", port)
-	srv := &http.Server{
-		Addr:              port,
-		ReadHeaderTimeout: 5 * time.Second,
-	}
-
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	log.Printf("[Arena Web] Listening on :8081")
+	if err := http.ListenAndServe(":8081", nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
