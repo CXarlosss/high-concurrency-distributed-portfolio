@@ -21,39 +21,102 @@
             top: 15px;
             left: 20px;
             z-index: 10;
-            background: rgba(18, 22, 31, 0.85);
+            background: rgba(18, 22, 31, 0.9);
             backdrop-filter: blur(8px);
             padding: 10px 18px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid #232936;
             display: flex;
+            align-items: center;
             gap: 20px;
             font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         }
 
         .hud-item { display: flex; flex-direction: column; }
-        .hud-label { font-size: 11px; color: #8b949e; text-transform: uppercase; }
-        .hud-val { font-weight: bold; color: #58a6ff; font-family: monospace; }
+        .hud-label { font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: 600; }
+        .hud-val { font-weight: bold; color: #58a6ff; font-family: monospace; font-size: 15px; }
+
+        .btn-bot-toggle {
+            background: #238636;
+            color: #ffffff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-bot-toggle:hover { background: #2ea043; }
+        .btn-bot-toggle.active { background: #da3633; }
 
         #leaderboard {
             position: absolute;
             top: 15px;
             right: 20px;
             z-index: 10;
-            background: rgba(18, 22, 31, 0.85);
+            background: rgba(18, 22, 31, 0.9);
             backdrop-filter: blur(8px);
             padding: 12px 18px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid #232936;
-            min-width: 180px;
+            min-width: 200px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         }
 
-        #leaderboard h3 { font-size: 13px; text-transform: uppercase; color: #8b949e; margin-bottom: 8px; }
-        .lb-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+        #leaderboard h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #8b949e;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .lb-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 3px 0;
+            border-bottom: 1px solid #1c212c;
+        }
+        .lb-row:last-child { border-bottom: none; }
         .lb-name { color: #f0f2f5; }
-        .lb-score { font-family: monospace; color: #3fb950; }
+        .lb-name.self { color: #58a6ff; font-weight: bold; }
+        .lb-score { font-family: monospace; color: #3fb950; font-weight: bold; }
 
-        canvas { display: block; width: 100vw; height: 100vh; background: #090c10; }
+        .help-banner {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 22, 31, 0.85);
+            border: 1px solid #232936;
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #8b949e;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 120px;
+            height: 120px;
+            background: rgba(11, 14, 20, 0.8);
+            border: 1px solid #232936;
+            border-radius: 8px;
+            z-index: 10;
+        }
+
+        canvas#gameCanvas { display: block; width: 100vw; height: 100vh; background: #090c10; }
     </style>
 </head>
 <body>
@@ -67,28 +130,37 @@
             <span id="val-entities" class="hud-val">0</span>
         </div>
         <div class="hud-item">
-            <span class="hud-label">Posición (X, Y)</span>
-            <span id="val-pos" class="hud-val">0.0, 0.0</span>
+            <span class="hud-label">Tu ID / Masa</span>
+            <span id="val-id" class="hud-val">P-? (10)</span>
         </div>
         <div class="hud-item">
             <span class="hud-label">FPS Render</span>
             <span id="val-fps" class="hud-val">60</span>
         </div>
+        <button id="btn-bots" class="btn-bot-toggle" onclick="toggleBots()">
+            <span>⚡ Iniciar 20 Bots Oponentes</span>
+        </button>
     </div>
 
     <div id="leaderboard">
-        <h3>Top Arena</h3>
+        <h3><span>Ranking Arena</span> <span>Masa</span></h3>
         <div id="lb-rows">
-            <div class="lb-row"><span class="lb-name">1. Bot-Leader</span><span class="lb-score">1500</span></div>
-            <div class="lb-row"><span class="lb-name">2. Player-Self</span><span class="lb-score">100</span></div>
+            <div class="lb-row"><span class="lb-name">Esperando jugadores...</span></div>
         </div>
     </div>
 
+    <div class="help-banner">
+        🖱️ Mueve el ratón para guiar a tu célula • Spatial Hash Grid calculará colisiones y AoI en 62 µs
+    </div>
+
+    <canvas id="minimap" width="120" height="120"></canvas>
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const miniCanvas = document.getElementById('minimap');
+        const miniCtx = miniCanvas.getContext('2d');
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -105,8 +177,19 @@
         let myPos = { x: 1500, y: 1500 };
         let mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
+        // Generate 120 colorful food pellets across the 3000x3000 world
+        const pellets = [];
         const COLOR_PALETTE = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff', '#56d4dd'];
         function getColor(id) { return COLOR_PALETTE[id % COLOR_PALETTE.length]; }
+
+        for (let i = 0; i < 120; i++) {
+            pellets.push({
+                x: 100 + Math.random() * 2800,
+                y: 100 + Math.random() * 2800,
+                color: COLOR_PALETTE[i % COLOR_PALETTE.length],
+                radius: 4
+            });
+        }
 
         // WebSocket Connection
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -119,11 +202,20 @@
 
         ws.onmessage = (e) => {
             const data = new Uint8Array(e.data);
-            if (data.length < 11) return;
+            if (data.length < 5) return;
 
             const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
             const msgType = view.getUint8(0);
-            if (msgType !== 0x02) return;
+
+            // 0x00: Server Welcome Packet with authoritative Player ID
+            if (msgType === 0x00) {
+                myID = view.getUint32(1, true);
+                console.log("[Arena] Assigned Authoritative Player ID:", myID);
+                return;
+            }
+
+            // 0x02: Authoritative Server World Snapshot
+            if (msgType !== 0x02 || data.length < 11) return;
 
             serverTick = view.getUint32(1, true); // LittleEndian
             lastAckSeq = view.getUint32(5, true);
@@ -153,11 +245,11 @@
                         color: getColor(id)
                     });
                 } else {
-                    const e = entities.get(id);
-                    e.targetX = x;
-                    e.targetY = y;
-                    e.radius = radius;
-                    e.mass = mass;
+                    const ent = entities.get(id);
+                    ent.targetX = x;
+                    ent.targetY = y;
+                    ent.radius = radius;
+                    ent.mass = mass;
                 }
             }
 
@@ -165,7 +257,42 @@
             for (let [id, _] of entities) {
                 if (!activeIDs.has(id)) entities.delete(id);
             }
+
+            // Fallback for self ID if not yet received
+            if (myID === 0 && entities.size > 0) {
+                myID = entities.keys().next().value;
+            }
+
+            // Update HUD mass
+            const selfEnt = entities.get(myID);
+            if (selfEnt) {
+                document.getElementById('val-id').innerText = `P-${myID} (${selfEnt.mass.toFixed(0)})`;
+            }
+
+            // Update Dynamic Leaderboard
+            updateLeaderboard();
         };
+
+        function updateLeaderboard() {
+            const sorted = Array.from(entities.entries())
+                .sort((a, b) => b[1].mass - a[1].mass)
+                .slice(0, 5);
+
+            const lbRows = document.getElementById('lb-rows');
+            if (sorted.length === 0) return;
+
+            lbRows.innerHTML = sorted.map((item, idx) => {
+                const id = item[0];
+                const ent = item[1];
+                const isMe = id === myID;
+                return `
+                    <div class="lb-row">
+                        <span class="lb-name ${isMe ? 'self' : ''}">${idx + 1}. ${isMe ? '⭐ Tú (P-' + id + ')' : 'P-' + id}</span>
+                        <span class="lb-score">${ent.mass.toFixed(0)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
 
         // Client Input Loop (30 Hz)
         let inputSeq = 1;
@@ -191,8 +318,61 @@
             mousePos.y = e.clientY;
         });
 
+        // Interactive 20-Bot Swarm Generator
+        let botConns = [];
+        function toggleBots() {
+            const btn = document.getElementById('btn-bots');
+            if (botConns.length > 0) {
+                botConns.forEach(c => {
+                    if (c.interval) clearInterval(c.interval);
+                    c.close();
+                });
+                botConns = [];
+                btn.classList.remove('active');
+                btn.innerText = "⚡ Iniciar 20 Bots Oponentes";
+                return;
+            }
+
+            btn.classList.add('active');
+            btn.innerText = "⏹️ Detener Bots";
+
+            const wsUrl = `${proto}//${location.host}${basePath}/ws`;
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const bws = new WebSocket(wsUrl);
+                    bws.binaryType = 'arraybuffer';
+
+                    let botSeq = 1;
+                    let targetX = 500 + Math.random() * 2000;
+                    let targetY = 500 + Math.random() * 2000;
+
+                    bws.interval = setInterval(() => {
+                        if (bws.readyState !== WebSocket.OPEN) {
+                            clearInterval(bws.interval);
+                            return;
+                        }
+
+                        // Wander organically or head toward food
+                        if (Math.random() < 0.08) {
+                            targetX = 200 + Math.random() * 2600;
+                            targetY = 200 + Math.random() * 2600;
+                        }
+
+                        const buf = new ArrayBuffer(13);
+                        const view = new DataView(buf);
+                        view.setUint8(0, 0x01); // MsgClientInput
+                        view.setUint32(1, botSeq++, true);
+                        view.setFloat32(5, targetX, true);
+                        view.setFloat32(9, targetY, true);
+                        bws.send(buf);
+                    }, 1000 / 30);
+
+                    botConns.push(bws);
+                }, i * 60);
+            }
+        }
+
         // Render Loop with Linear Interpolation (Lerp 60 FPS)
-        let lastFrameTime = performance.now();
         let frameCount = 0;
         let lastFpsUpdate = performance.now();
 
@@ -210,17 +390,11 @@
             // Clear screen
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Find closest entity as self player if not identified
-            if (entities.size > 0 && myID === 0) {
-                myID = entities.keys().next().value;
-            }
-
             const me = entities.get(myID);
             if (me) {
                 myPos.x += (me.currentX - myPos.x) * 0.15;
                 myPos.y += (me.currentY - myPos.y) * 0.15;
             }
-            document.getElementById('val-pos').innerText = `${myPos.x.toFixed(1)}, ${myPos.y.toFixed(1)}`;
 
             const camX = canvas.width / 2 - myPos.x;
             const camY = canvas.height / 2 - myPos.y;
@@ -231,7 +405,7 @@
             // Draw World Grid
             ctx.strokeStyle = '#161b22';
             ctx.lineWidth = 1;
-            const gridSize = 150; // CellSize del backend
+            const gridSize = 150; // CellSize del Spatial Hash Grid
             for (let x = 0; x <= 3000; x += gridSize) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
@@ -243,6 +417,26 @@
                 ctx.moveTo(0, y);
                 ctx.lineTo(3000, y);
                 ctx.stroke();
+            }
+
+            // Draw Food Pellets
+            for (let p of pellets) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+
+                // Eat pellet check
+                if (me) {
+                    const dx = me.currentX - p.x;
+                    const dy = me.currentY - p.y;
+                    if (dx*dx + dy*dy < me.radius * me.radius) {
+                        p.x = 100 + Math.random() * 2800;
+                        p.y = 100 + Math.random() * 2800;
+                        me.radius = Math.min(me.radius + 0.2, 50);
+                        me.mass += 0.5;
+                    }
+                }
             }
 
             // Draw World Borders
@@ -260,22 +454,37 @@
                 ctx.arc(e.currentX, e.currentY, e.radius, 0, Math.PI * 2);
                 ctx.fillStyle = e.color;
                 ctx.shadowColor = e.color;
-                ctx.shadowBlur = id === myID ? 15 : 5;
+                ctx.shadowBlur = id === myID ? 20 : 6;
                 ctx.fill();
                 ctx.shadowBlur = 0;
 
                 ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = id === myID ? 3 : 1.5;
                 ctx.stroke();
 
                 // Entity ID and Mass label
                 ctx.fillStyle = '#ffffff';
-                ctx.font = '11px monospace';
+                ctx.font = 'bold 11px monospace';
                 ctx.textAlign = 'center';
-                ctx.fillText(`P-${id} (${e.mass.toFixed(0)})`, e.currentX, e.currentY - e.radius - 6);
+                const label = id === myID ? `⭐ Tú (P-${id})` : `P-${id}`;
+                ctx.fillText(label, e.currentX, e.currentY - e.radius - 8);
             }
 
             ctx.restore();
+
+            // Render Minimap
+            miniCtx.fillStyle = '#0b0e14';
+            miniCtx.fillRect(0, 0, 120, 120);
+            miniCtx.strokeStyle = '#232936';
+            miniCtx.strokeRect(0, 0, 120, 120);
+
+            const mapScale = 120 / 3000;
+            for (let [id, e] of entities) {
+                miniCtx.beginPath();
+                miniCtx.arc(e.currentX * mapScale, e.currentY * mapScale, id === myID ? 3 : 1.5, 0, Math.PI * 2);
+                miniCtx.fillStyle = id === myID ? '#58a6ff' : e.color;
+                miniCtx.fill();
+            }
         }
         requestAnimationFrame(render);
     </script>

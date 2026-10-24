@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cv-projects/arena-io/internal/game"
+	"github.com/cv-projects/arena-io/internal/netproto"
 	"github.com/cv-projects/arena-io/internal/ws"
 	"github.com/gorilla/websocket"
 )
@@ -50,6 +52,13 @@ func main() {
 		}
 
 		playerID := room.NextPlayerID()
+
+		// Send initial authoritative player ID welcome packet (5 bytes: [0x00, ID:uint32 LittleEndian])
+		welcome := make([]byte, 5)
+		welcome[0] = netproto.MsgWelcome
+		binary.LittleEndian.PutUint32(welcome[1:5], playerID)
+		_ = conn.WriteMessage(websocket.BinaryMessage, welcome)
+
 		client := ws.NewClient(room, conn, playerID)
 		room.Register(client)
 

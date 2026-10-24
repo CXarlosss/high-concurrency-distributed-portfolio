@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	MsgWelcome      uint8 = 0x00
 	MsgClientInput  uint8 = 0x01
 	MsgServerUpdate uint8 = 0x02
 	HeaderSize            = 11
