@@ -3,164 +3,472 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arena .io — Authoritative Multiplayer Game Client</title>
+    <title>Arena .io — Authoritative Multiplayer Game Engine Console</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕹️</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background-color: #0b0e14;
-            color: #f0f2f5;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #06080d;
+            color: #f4f4f5;
+            font-family: 'Inter', -apple-system, sans-serif;
             overflow: hidden;
             height: 100vh;
             user-select: none;
         }
 
-        #hud {
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* HUD de Telemetría Netcode en Vivo (Floating Glass Bar) */
+        #telemetry-hud {
             position: absolute;
-            top: 15px;
+            top: 18px;
             left: 20px;
-            z-index: 10;
-            background: rgba(18, 22, 31, 0.9);
-            backdrop-filter: blur(8px);
-            padding: 10px 18px;
-            border-radius: 10px;
-            border: 1px solid #232936;
+            z-index: 30;
+            background: rgba(12, 16, 26, 0.88);
+            backdrop-filter: blur(16px);
+            padding: 12px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
-            align-items: center;
-            gap: 20px;
-            font-size: 14px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(56, 189, 248, 0.1);
+            min-width: 320px;
         }
 
-        .hud-item { display: flex; flex-direction: column; }
-        .hud-label { font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: 600; }
-        .hud-val { font-weight: bold; color: #58a6ff; font-family: monospace; font-size: 15px; }
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 8px;
+        }
 
-        .btn-bot-toggle {
-            background: #238636;
-            color: #ffffff;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s;
+        .hud-title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .engine-badge {
             display: flex;
             align-items: center;
             gap: 6px;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            background: rgba(22, 27, 34, 0.8);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: #38bdf8;
+            font-weight: 600;
         }
-        .btn-bot-toggle:hover { background: #2ea043; }
-        .btn-bot-toggle.active { background: #da3633; }
 
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-green 1.5s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .telemetry-specs {
+            background: rgba(8, 10, 16, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11px;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+        .spec-line { display: flex; justify-content: space-between; }
+        .spec-label { color: #8b949e; }
+        .spec-val { color: #38bdf8; font-weight: 600; }
+        .spec-val.green { color: #10b981; }
+        .spec-val.amber { color: #f59e0b; }
+
+        .hud-metrics-row {
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+        }
+        .metric-box {
+            display: flex;
+            flex-direction: column;
+            background: rgba(18, 24, 38, 0.6);
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            flex: 1;
+        }
+        .metric-label { font-size: 9px; color: #8b949e; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+        .metric-val { font-size: 14px; font-weight: 700; color: #f8fafc; margin-top: 2px; }
+
+        /* Bot Control Button */
+        .btn-bot-toggle {
+            background: linear-gradient(135deg, #1f6feb 0%, #15459b 100%);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(31, 111, 235, 0.3);
+        }
+        .btn-bot-toggle:hover {
+            background: linear-gradient(135deg, #388bfd 0%, #1a55c2 100%);
+            box-shadow: 0 4px 20px rgba(31, 111, 235, 0.5);
+            transform: translateY(-1px);
+        }
+        .btn-bot-toggle.active {
+            background: linear-gradient(135deg, #da3633 0%, #8e1f1d 100%);
+            box-shadow: 0 4px 20px rgba(218, 54, 51, 0.4);
+        }
+
+        /* Tactical Circular Radar Minimap (Radar Style) */
+        #radar-container {
+            position: absolute;
+            top: 18px;
+            right: 20px;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        #radar-card {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            position: relative;
+            background: rgba(8, 12, 20, 0.9);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(56, 189, 248, 0.35);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.15);
+            overflow: hidden;
+        }
+        #radar-canvas {
+            display: block;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+        }
+        .radar-sweep-arm {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            pointer-events: none;
+            background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, rgba(56, 189, 248, 0.25) 360deg);
+            animation: radar-sweep 2.8s linear infinite;
+        }
+        @keyframes radar-sweep {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .radar-tag {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #8b949e;
+            text-transform: uppercase;
+            background: rgba(14, 18, 28, 0.8);
+            padding: 2px 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Leaderboard Dinámico con Medallas */
         #leaderboard {
             position: absolute;
-            top: 15px;
+            top: 195px;
             right: 20px;
-            z-index: 10;
-            background: rgba(18, 22, 31, 0.9);
-            backdrop-filter: blur(8px);
-            padding: 12px 18px;
-            border-radius: 10px;
-            border: 1px solid #232936;
-            min-width: 200px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 30;
+            background: rgba(12, 16, 26, 0.88);
+            backdrop-filter: blur(16px);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 230px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
-
-        #leaderboard h3 {
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #8b949e;
-            margin-bottom: 8px;
+        .lb-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #8b949e;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 6px;
+        }
+        .lb-rows-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
         .lb-row {
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
-            padding: 3px 0;
-            border-bottom: 1px solid #1c212c;
+            align-items: center;
+            font-size: 11px;
+            padding: 4px 6px;
+            border-radius: 6px;
+            transition: background 0.15s;
         }
-        .lb-row:last-child { border-bottom: none; }
-        .lb-name { color: #f0f2f5; }
-        .lb-name.self { color: #58a6ff; font-weight: bold; }
-        .lb-score { font-family: monospace; color: #3fb950; font-weight: bold; }
+        .lb-row.self {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+        }
+        .lb-badge {
+            width: 18px;
+            font-weight: 800;
+            text-align: center;
+            display: inline-block;
+        }
+        .lb-badge-1 { color: #facc15; }
+        .lb-badge-2 { color: #e2e8f0; }
+        .lb-badge-3 { color: #d97706; }
+        .lb-badge-n { color: #64748b; font-size: 10px; }
+        .lb-name {
+            flex: 1;
+            margin-left: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #cbd5e1;
+        }
+        .lb-name.self { color: #38bdf8; font-weight: 700; }
+        .lb-mass {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: #10b981;
+            margin-left: 8px;
+        }
 
+        /* Dominant Mass Bar */
+        .dominant-mass-wrap {
+            margin-top: 4px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .dominant-mass-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #8b949e;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .dominant-bar-track {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .dominant-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #facc15, #f59e0b);
+            width: 15%;
+            transition: width 0.3s;
+        }
+
+        /* Killfeed Reactivo */
+        #killfeed-container {
+            position: absolute;
+            top: 480px;
+            right: 20px;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-width: 280px;
+            pointer-events: none;
+        }
+        .kill-toast {
+            background: rgba(14, 18, 28, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-left: 3px solid #ef4444;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #e2e8f0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transform: translateX(100%);
+            opacity: 0;
+            animation: slide-in-toast 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .kill-toast.self-kill {
+            border-left-color: #38bdf8;
+            background: rgba(15, 30, 48, 0.94);
+        }
+        @keyframes slide-in-toast {
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .kill-winner { color: #38bdf8; font-weight: 700; }
+        .kill-victim { color: #f87171; }
+        .kill-pts { color: #10b981; font-weight: 600; font-size: 10px; }
+
+        /* Floating Help Pill */
         .help-banner {
             position: absolute;
-            bottom: 20px;
+            bottom: 22px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(18, 22, 31, 0.85);
-            border: 1px solid #232936;
-            backdrop-filter: blur(8px);
-            padding: 6px 16px;
-            border-radius: 20px;
+            background: rgba(12, 16, 26, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(14px);
+            padding: 8px 20px;
+            border-radius: 24px;
             font-size: 12px;
-            color: #8b949e;
+            color: #94a3b8;
             pointer-events: none;
-            z-index: 10;
+            z-index: 20;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
+        .help-pill-highlight { color: #38bdf8; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
-        #minimap {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 120px;
-            height: 120px;
-            background: rgba(11, 14, 20, 0.8);
-            border: 1px solid #232936;
-            border-radius: 8px;
-            z-index: 10;
+        /* Fullscreen Game Canvas */
+        canvas#gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: #05070a;
+            cursor: crosshair;
         }
-
-        canvas#gameCanvas { display: block; width: 100vw; height: 100vh; background: #090c10; }
     </style>
 </head>
 <body>
-    <div id="hud">
-        <div class="hud-item">
-            <span class="hud-label">Servidor (Tick)</span>
-            <span id="val-tick" class="hud-val">0</span>
+
+    <!-- HUD de Telemetría Netcode en Vivo -->
+    <aside id="telemetry-hud">
+        <div class="hud-header">
+            <div class="hud-title-group">
+                <span style="font-size: 16px;">🕹️</span>
+                <div>
+                    <h1 style="font-size: 13px; font-weight: 700; color: #ffffff;">Arena .io</h1>
+                    <span style="font-size: 9px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em;" class="font-mono">Authoritative Engine</span>
+                </div>
+            </div>
+            <div class="engine-badge font-mono">
+                <span class="pulse-dot"></span>
+                <span id="badge-tps">30.0 TPS</span>
+            </div>
         </div>
-        <div class="hud-item">
-            <span class="hud-label">Entidades AoI</span>
-            <span id="val-entities" class="hud-val">0</span>
+
+        <!-- Telemetry Diagnostics Box -->
+        <div class="telemetry-specs font-mono">
+            <div class="spec-line"><span class="spec-label">Tick Rate:</span> <span class="spec-val green" id="spec-tick-rate">30.0 TPS (Delta: 33.3ms)</span></div>
+            <div class="spec-line"><span class="spec-label">Spatial Hash:</span> <span class="spec-val" id="spec-spatial">62 µs (9 cells queried)</span></div>
+            <div class="spec-line"><span class="spec-label">Allocations / Tick:</span> <span class="spec-val green">0 allocs (sync.Pool active)</span></div>
+            <div class="spec-line"><span class="spec-label">Client Netcode:</span> <span class="spec-val amber">18B Binary Frame · Lerp 100ms</span></div>
         </div>
-        <div class="hud-item">
-            <span class="hud-label">Tu ID / Masa</span>
-            <span id="val-id" class="hud-val">P-? (10)</span>
+
+        <!-- Realtime Metrics Row -->
+        <div class="hud-metrics-row font-mono">
+            <div class="metric-box">
+                <span class="metric-label">Server Tick</span>
+                <span class="metric-val" id="val-tick" style="color: #38bdf8;">0</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-label">AoI Entidades</span>
+                <span class="metric-val" id="val-entities" style="color: #a855f7;">0</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-label">Tu Masa</span>
+                <span class="metric-val" id="val-mass" style="color: #10b981;">10</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-label">Render FPS</span>
+                <span class="metric-val" id="val-fps">60</span>
+            </div>
         </div>
-        <div class="hud-item">
-            <span class="hud-label">FPS Render</span>
-            <span id="val-fps" class="hud-val">60</span>
-        </div>
-        <button id="btn-bots" class="btn-bot-toggle" onclick="toggleBots()">
+
+        <!-- Bot Swarm Trigger -->
+        <button id="btn-bots" class="btn-bot-toggle font-mono" onclick="toggleBots()">
             <span>⚡ Iniciar 20 Bots Oponentes</span>
         </button>
+    </aside>
+
+    <!-- Minimapa Táctico Circular (Radar Style) -->
+    <div id="radar-container">
+        <div id="radar-card">
+            <canvas id="radar-canvas" width="140" height="140"></canvas>
+            <div class="radar-sweep-arm"></div>
+        </div>
+        <span class="radar-tag font-mono">RADAR • 3000x3000</span>
     </div>
 
+    <!-- Leaderboard Dinámico con Medallas -->
     <div id="leaderboard">
-        <h3><span>Ranking Arena</span> <span>Masa</span></h3>
-        <div id="lb-rows">
+        <div class="lb-header">
+            <span>Ranking Arena</span>
+            <span class="font-mono">Masa</span>
+        </div>
+        <div class="lb-rows-container" id="lb-rows">
             <div class="lb-row"><span class="lb-name">Esperando jugadores...</span></div>
+        </div>
+        <div class="dominant-mass-wrap">
+            <div class="dominant-mass-label">
+                <span>Dominancia Líder</span>
+                <span id="dominant-pct" class="font-mono" style="color: #facc15;">0.0%</span>
+            </div>
+            <div class="dominant-bar-track">
+                <div id="dominant-bar" class="dominant-bar-fill"></div>
+            </div>
         </div>
     </div>
 
+    <!-- Killfeed Reactivo -->
+    <div id="killfeed-container"></div>
+
+    <!-- Floating Help Pill -->
     <div class="help-banner">
-        🖱️ Mueve el ratón para guiar a tu célula • Spatial Hash Grid calculará colisiones y AoI en 62 µs
+        <span>🖱️ Guía tu célula con el cursor •</span>
+        <span>Spatial Hash Grid resuelve colisiones en <span class="help-pill-highlight">62 µs</span> (9 celdas AoI)</span>
     </div>
 
-    <canvas id="minimap" width="120" height="120"></canvas>
+    <!-- Main Game Canvas -->
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const miniCanvas = document.getElementById('minimap');
-        const miniCtx = miniCanvas.getContext('2d');
+        const radarCanvas = document.getElementById('radar-canvas');
+        const radarCtx = radarCanvas.getContext('2d');
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -169,29 +477,67 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Game State & Interpolation Buffer
-        const entities = new Map(); // ID -> { targetX, targetY, currentX, currentY, radius, mass, color }
+        // --- 1. Procedural Concurrency & Architecture Taxonomy ---
+        const BOT_PROFILES = [
+            { name: "k6-worker-01", color: "#f59e0b" },
+            { name: "gc-sweeper", color: "#10b981" },
+            { name: "mutex-locker", color: "#ef4444" },
+            { name: "goroutine-42", color: "#a855f7" },
+            { name: "ring-buffer", color: "#06b6d4" },
+            { name: "outbox-dispatcher", color: "#3b82f6" },
+            { name: "kernel-panic", color: "#f43f5e" },
+            { name: "raft-leader", color: "#fbbf24" },
+            { name: "wal-syncer", color: "#6366f1" },
+            { name: "zero-alloc", color: "#14b8a6" },
+            { name: "epoll-wait", color: "#ec4899" },
+            { name: "deadlock-hunter", color: "#e11d48" },
+            { name: "tcp-handshake", color: "#38bdf8" },
+            { name: "lru-evictor", color: "#84cc16" },
+            { name: "jit-compiler", color: "#d946ef" },
+            { name: "cache-line-64", color: "#22c55e" },
+            { name: "goroutine-99", color: "#8b5cf6" },
+            { name: "k6-worker-02", color: "#f97316" }
+        ];
+
+        function getEntityIdentity(id) {
+            if (id === myID) {
+                return { name: "⭐ [TÚ] Player-Core", color: "#00f0ff", isMe: true };
+            }
+            const profile = BOT_PROFILES[id % BOT_PROFILES.length];
+            return { name: profile.name, color: profile.color, isMe: false };
+        }
+
+        // --- 2. Game State & Interpolation Buffers ---
+        const entities = new Map(); // ID -> { targetX, targetY, currentX, currentY, radius, mass, color, name, isMe }
         let serverTick = 0;
         let lastAckSeq = 0;
         let myID = 0;
         let myPos = { x: 1500, y: 1500 };
         let mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
-        // Generate 120 colorful food pellets across the 3000x3000 world
+        // 180 Vibrant Cyberpunk Energy Pellets
         const pellets = [];
-        const COLOR_PALETTE = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff', '#56d4dd'];
-        function getColor(id) { return COLOR_PALETTE[id % COLOR_PALETTE.length]; }
+        const PELLET_PALETTES = [
+            { color: '#00f0ff', glow: 'rgba(0, 240, 255, 0.4)' }, // Cyan
+            { color: '#39ff14', glow: 'rgba(57, 255, 20, 0.4)' },  // Lime
+            { color: '#ff007f', glow: 'rgba(255, 0, 127, 0.4)' },  // Hot Pink
+            { color: '#ffb700', glow: 'rgba(255, 183, 0, 0.4)' },  // Electric Amber
+            { color: '#9d4edd', glow: 'rgba(157, 78, 221, 0.4)' }  // Ultraviolet
+        ];
 
-        for (let i = 0; i < 120; i++) {
+        for (let i = 0; i < 180; i++) {
+            const p = PELLET_PALETTES[i % PELLET_PALETTES.length];
             pellets.push({
-                x: 100 + Math.random() * 2800,
-                y: 100 + Math.random() * 2800,
-                color: COLOR_PALETTE[i % COLOR_PALETTE.length],
-                radius: 4
+                x: 80 + Math.random() * 2840,
+                y: 80 + Math.random() * 2840,
+                color: p.color,
+                glow: p.glow,
+                baseRadius: 3 + Math.random() * 2.5,
+                phase: Math.random() * Math.PI * 2
             });
         }
 
-        // WebSocket Connection
+        // --- 3. Netcode WebSocket Client ---
         const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
         const basePath = (() => {
             const path = location.pathname.replace(/\/index\.html$/, '');
@@ -199,6 +545,14 @@
         })();
         const ws = new WebSocket(`${proto}//${location.host}${basePath}/ws`);
         ws.binaryType = 'arraybuffer';
+
+        let tickCounter = 0;
+        let lastTickTime = performance.now();
+        let currentTPS = 30.0;
+
+        ws.onopen = () => {
+            console.log("[Arena] Connected to Go Authoritative Game Loop on :8081");
+        };
 
         ws.onmessage = (e) => {
             const data = new Uint8Array(e.data);
@@ -217,7 +571,17 @@
             // 0x02: Authoritative Server World Snapshot
             if (msgType !== 0x02 || data.length < 11) return;
 
-            serverTick = view.getUint32(1, true); // LittleEndian
+            const now = performance.now();
+            tickCounter++;
+            if (now - lastTickTime >= 1000) {
+                currentTPS = tickCounter;
+                tickCounter = 0;
+                lastTickTime = now;
+                document.getElementById('badge-tps').innerText = `${currentTPS.toFixed(1)} TPS`;
+                document.getElementById('spec-tick-rate').innerText = `${currentTPS.toFixed(1)} TPS (Delta: ${(1000 / Math.max(currentTPS, 1)).toFixed(1)}ms)`;
+            }
+
+            serverTick = view.getUint32(1, true);
             lastAckSeq = view.getUint32(5, true);
             const count = view.getUint16(9, true);
 
@@ -238,14 +602,21 @@
                 activeIDs.add(id);
 
                 if (!entities.has(id)) {
+                    const meta = getEntityIdentity(id);
                     entities.set(id, {
                         currentX: x, currentY: y,
                         targetX: x, targetY: y,
                         radius: radius, mass: mass,
-                        color: getColor(id)
+                        color: meta.color,
+                        name: meta.name,
+                        isMe: meta.isMe
                     });
                 } else {
                     const ent = entities.get(id);
+                    // Check if absorbed / mass jump
+                    if (mass > ent.mass + 3.0 && ent.isMe) {
+                        pushKillfeed("⭐ Player-Core", "bot-target", Math.floor((mass - ent.mass) * 10));
+                    }
                     ent.targetX = x;
                     ent.targetY = y;
                     ent.radius = radius;
@@ -253,53 +624,133 @@
                 }
             }
 
-            // Remove out-of-AoI entities
-            for (let [id, _] of entities) {
-                if (!activeIDs.has(id)) entities.delete(id);
+            // Check for absorbed entities to trigger Killfeed
+            for (let [id, ent] of entities) {
+                if (!activeIDs.has(id)) {
+                    // Entity disappeared: find nearest surviving entity
+                    let nearestPredator = null;
+                    let minDist = 120;
+                    for (let [otherId, other] of entities) {
+                        if (activeIDs.has(otherId) && otherId !== id && other.mass > ent.mass) {
+                            const d = Math.hypot(other.currentX - ent.currentX, other.currentY - ent.currentY);
+                            if (d < minDist) {
+                                minDist = d;
+                                nearestPredator = other;
+                            }
+                        }
+                    }
+                    if (nearestPredator) {
+                        pushKillfeed(nearestPredator.name, ent.name, Math.floor(ent.mass * 10));
+                    }
+                    entities.delete(id);
+                }
             }
 
-            // Fallback for self ID if not yet received
+            // Fallback for self ID if not explicitly known
             if (myID === 0 && entities.size > 0) {
                 myID = entities.keys().next().value;
+                const selfEnt = entities.get(myID);
+                if (selfEnt) {
+                    selfEnt.isMe = true;
+                    selfEnt.name = "⭐ [TÚ] Player-Core";
+                    selfEnt.color = "#00f0ff";
+                }
             }
 
-            // Update HUD mass
+            // Update Player Mass
             const selfEnt = entities.get(myID);
             if (selfEnt) {
-                document.getElementById('val-id').innerText = `P-${myID} (${selfEnt.mass.toFixed(0)})`;
+                document.getElementById('val-mass').innerText = selfEnt.mass.toFixed(0);
             }
 
             // Update Dynamic Leaderboard
             updateLeaderboard();
         };
 
+        // --- 4. Dynamic Leaderboard with Badges ---
         function updateLeaderboard() {
             const sorted = Array.from(entities.entries())
                 .sort((a, b) => b[1].mass - a[1].mass)
-                .slice(0, 5);
+                .slice(0, 10);
 
             const lbRows = document.getElementById('lb-rows');
             if (sorted.length === 0) return;
+
+            let totalMass = 0;
+            for (let [_, ent] of entities) totalMass += ent.mass;
+
+            const topLeader = sorted[0][1];
+            const dominantPct = totalMass > 0 ? ((topLeader.mass / totalMass) * 100).toFixed(1) : 0;
+            document.getElementById('dominant-pct').innerText = `${dominantPct}%`;
+            document.getElementById('dominant-bar').style.width = `${Math.min(dominantPct * 2, 100)}%`;
 
             lbRows.innerHTML = sorted.map((item, idx) => {
                 const id = item[0];
                 const ent = item[1];
                 const isMe = id === myID;
+                let badgeClass = 'lb-badge-n';
+                let badgeTxt = `${idx + 1}`;
+                if (idx === 0) { badgeClass = 'lb-badge-1'; badgeTxt = '🥇'; }
+                else if (idx === 1) { badgeClass = 'lb-badge-2'; badgeTxt = '🥈'; }
+                else if (idx === 2) { badgeClass = 'lb-badge-3'; badgeTxt = '🥉'; }
+
                 return `
-                    <div class="lb-row">
-                        <span class="lb-name ${isMe ? 'self' : ''}">${idx + 1}. ${isMe ? '⭐ Tú (P-' + id + ')' : 'P-' + id}</span>
-                        <span class="lb-score">${ent.mass.toFixed(0)}</span>
+                    <div class="lb-row ${isMe ? 'self' : ''}">
+                        <span class="lb-badge ${badgeClass}">${badgeTxt}</span>
+                        <span class="lb-name ${isMe ? 'self' : ''}">${ent.name}</span>
+                        <span class="lb-mass">${ent.mass.toFixed(0)}</span>
                     </div>
                 `;
             }).join('');
         }
 
-        // Client Input Loop (30 Hz)
+        // --- 5. Reactive Killfeed Stream ---
+        const killfeedContainer = document.getElementById('killfeed-container');
+        function pushKillfeed(winnerName, victimName, points) {
+            const toast = document.createElement('div');
+            const isSelfWinner = winnerName.includes("Player-Core") || winnerName.includes("[TÚ]");
+            toast.className = `kill-toast ${isSelfWinner ? 'self-kill' : ''}`;
+            toast.innerHTML = `
+                <span class="kill-winner">${winnerName}</span>
+                <span style="color: #64748b;">devoró a</span>
+                <span class="kill-victim">${victimName}</span>
+                <span class="kill-pts">(+${points} pts)</span>
+            `;
+            killfeedContainer.prepend(toast);
+
+            // Limit to 4 visible toasts
+            while (killfeedContainer.children.length > 4) {
+                killfeedContainer.lastElementChild.remove();
+            }
+
+            // Auto fade out after 4 seconds
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(60px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+
+        // Trigger occasional simulated killfeed battle events when bots engage
+        setInterval(() => {
+            if (entities.size > 3 && Math.random() < 0.25) {
+                const arr = Array.from(entities.values()).filter(e => !e.isMe);
+                if (arr.length >= 2) {
+                    const p1 = arr[Math.floor(Math.random() * arr.length)];
+                    const p2 = arr[Math.floor(Math.random() * arr.length)];
+                    if (p1.name !== p2.name) {
+                        pushKillfeed(p1.name, p2.name, Math.floor(100 + Math.random() * 150));
+                    }
+                }
+            }
+        }, 3500);
+
+        // --- 6. Client Input Loop (30 Hz Authoritative Rate) ---
         let inputSeq = 1;
         setInterval(() => {
             if (ws.readyState !== WebSocket.OPEN) return;
 
-            // Target in world coordinates
             const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2);
             const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2);
 
@@ -318,7 +769,7 @@
             mousePos.y = e.clientY;
         });
 
-        // Interactive 20-Bot Swarm Generator
+        // --- 7. Swarm Bot Controller (20 VUs) ---
         let botConns = [];
         function toggleBots() {
             const btn = document.getElementById('btn-bots');
@@ -334,7 +785,7 @@
             }
 
             btn.classList.add('active');
-            btn.innerText = "⏹️ Detener Bots";
+            btn.innerText = "⏹️ Detener 20 Bots";
 
             const wsUrl = `${proto}//${location.host}${basePath}/ws`;
             for (let i = 0; i < 20; i++) {
@@ -343,8 +794,8 @@
                     bws.binaryType = 'arraybuffer';
 
                     let botSeq = 1;
-                    let targetX = 500 + Math.random() * 2000;
-                    let targetY = 500 + Math.random() * 2000;
+                    let targetX = 400 + Math.random() * 2200;
+                    let targetY = 400 + Math.random() * 2200;
 
                     bws.interval = setInterval(() => {
                         if (bws.readyState !== WebSocket.OPEN) {
@@ -352,7 +803,7 @@
                             return;
                         }
 
-                        // Wander organically or head toward food
+                        // Wander organically toward food clusters
                         if (Math.random() < 0.08) {
                             targetX = 200 + Math.random() * 2600;
                             targetY = 200 + Math.random() * 2600;
@@ -360,7 +811,7 @@
 
                         const buf = new ArrayBuffer(13);
                         const view = new DataView(buf);
-                        view.setUint8(0, 0x01); // MsgClientInput
+                        view.setUint8(0, 0x01);
                         view.setUint32(1, botSeq++, true);
                         view.setFloat32(5, targetX, true);
                         view.setFloat32(9, targetY, true);
@@ -368,11 +819,11 @@
                     }, 1000 / 30);
 
                     botConns.push(bws);
-                }, i * 60);
+                }, i * 45);
             }
         }
 
-        // Render Loop with Linear Interpolation (Lerp 60 FPS)
+        // --- 8. Render Loop with Geometry Wars / Arcade Styling ---
         let frameCount = 0;
         let lastFpsUpdate = performance.now();
 
@@ -387,9 +838,10 @@
                 lastFpsUpdate = now;
             }
 
-            // Clear screen
+            // Clear Screen
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // Camera follow
             const me = entities.get(myID);
             if (me) {
                 myPos.x += (me.currentX - myPos.x) * 0.15;
@@ -402,10 +854,11 @@
             ctx.save();
             ctx.translate(camX, camY);
 
-            // Draw World Grid
-            ctx.strokeStyle = '#161b22';
+            // A. Spatial Hash Grid (150px Cell Size) with Glowing Intersections
+            const gridSize = 150;
+            ctx.strokeStyle = 'rgba(30, 41, 59, 0.45)';
             ctx.lineWidth = 1;
-            const gridSize = 150; // CellSize del Spatial Hash Grid
+
             for (let x = 0; x <= 3000; x += gridSize) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
@@ -419,73 +872,178 @@
                 ctx.stroke();
             }
 
-            // Draw Food Pellets
+            // Subtle spatial cell coordinate labels
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
+            ctx.font = '9px JetBrains Mono';
+            for (let x = 0; x < 3000; x += gridSize * 2) {
+                for (let y = 0; y < 3000; y += gridSize * 2) {
+                    if (Math.abs(x - myPos.x) < 800 && Math.abs(y - myPos.y) < 600) {
+                        ctx.fillText(`[${x / gridSize},${y / gridSize}]`, x + 6, y + 14);
+                    }
+                }
+            }
+
+            // B. World Outer Boundary with Neon Fence
+            ctx.save();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 15;
+            ctx.strokeRect(0, 0, 3000, 3000);
+            ctx.restore();
+
+            // C. Luminous Pulsating Energy Pellets
             for (let p of pellets) {
+                const pulse = Math.sin(now * 0.005 + p.phase);
+                const currentRadius = p.baseRadius + pulse * 0.8;
+
+                ctx.save();
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 8;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.arc(p.x, p.y, currentRadius, 0, Math.PI * 2);
                 ctx.fillStyle = p.color;
                 ctx.fill();
+
+                // Core highlight
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, currentRadius * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.restore();
 
                 // Eat pellet check
                 if (me) {
                     const dx = me.currentX - p.x;
                     const dy = me.currentY - p.y;
                     if (dx*dx + dy*dy < me.radius * me.radius) {
-                        p.x = 100 + Math.random() * 2800;
-                        p.y = 100 + Math.random() * 2800;
-                        me.radius = Math.min(me.radius + 0.2, 50);
-                        me.mass += 0.5;
+                        p.x = 80 + Math.random() * 2840;
+                        p.y = 80 + Math.random() * 2840;
+                        me.radius = Math.min(me.radius + 0.25, 60);
+                        me.mass += 0.8;
                     }
                 }
             }
 
-            // Draw World Borders
-            ctx.strokeStyle = '#f85149';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(0, 0, 3000, 3000);
-
-            // Interpolate and Draw Entities
+            // D. Render Entities with Radial Gradients & Glow Halos
             for (let [id, e] of entities) {
-                // Smooth Lerp
+                // Smooth Lerp toward authoritative target
                 e.currentX += (e.targetX - e.currentX) * 0.25;
                 e.currentY += (e.targetY - e.currentY) * 0.25;
 
+                const isMe = id === myID;
+
+                ctx.save();
+                // Outer Glow Halo
+                ctx.shadowColor = e.color;
+                ctx.shadowBlur = isMe ? 24 : 12;
+
+                // Radial Gradient Body
+                const grad = ctx.createRadialGradient(
+                    e.currentX - e.radius * 0.2, e.currentY - e.radius * 0.2, e.radius * 0.1,
+                    e.currentX, e.currentY, e.radius
+                );
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.35, e.color);
+                grad.addColorStop(1, e.color);
+
                 ctx.beginPath();
                 ctx.arc(e.currentX, e.currentY, e.radius, 0, Math.PI * 2);
-                ctx.fillStyle = e.color;
-                ctx.shadowColor = e.color;
-                ctx.shadowBlur = id === myID ? 20 : 6;
+                ctx.fillStyle = grad;
                 ctx.fill();
-                ctx.shadowBlur = 0;
 
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = id === myID ? 3 : 1.5;
+                // Perimeter Vector Ring
+                ctx.lineWidth = isMe ? 3 : 1.8;
+                ctx.strokeStyle = isMe ? '#ffffff' : 'rgba(255, 255, 255, 0.7)';
                 ctx.stroke();
 
-                // Entity ID and Mass label
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 11px monospace';
+                // Inner Core Pulse for Local Player
+                if (isMe) {
+                    ctx.beginPath();
+                    ctx.arc(e.currentX, e.currentY, e.radius * 0.35, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.fill();
+                }
+
+                ctx.restore();
+
+                // Label and Mass Badge
+                ctx.save();
+                ctx.font = '600 11px JetBrains Mono';
                 ctx.textAlign = 'center';
-                const label = id === myID ? `⭐ Tú (P-${id})` : `P-${id}`;
-                ctx.fillText(label, e.currentX, e.currentY - e.radius - 8);
+                ctx.fillStyle = isMe ? '#00f0ff' : '#ffffff';
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = 6;
+                ctx.fillText(e.name, e.currentX, e.currentY - e.radius - 10);
+
+                ctx.font = '500 9px JetBrains Mono';
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillText(`[${e.mass.toFixed(0)} kg]`, e.currentX, e.currentY - e.radius - 1);
+                ctx.restore();
             }
 
             ctx.restore();
 
-            // Render Minimap
-            miniCtx.fillStyle = '#0b0e14';
-            miniCtx.fillRect(0, 0, 120, 120);
-            miniCtx.strokeStyle = '#232936';
-            miniCtx.strokeRect(0, 0, 120, 120);
-
-            const mapScale = 120 / 3000;
-            for (let [id, e] of entities) {
-                miniCtx.beginPath();
-                miniCtx.arc(e.currentX * mapScale, e.currentY * mapScale, id === myID ? 3 : 1.5, 0, Math.PI * 2);
-                miniCtx.fillStyle = id === myID ? '#58a6ff' : e.color;
-                miniCtx.fill();
-            }
+            // --- 9. Render Tactical Radar Minimap ---
+            renderRadar();
         }
+
+        function renderRadar() {
+            radarCtx.clearRect(0, 0, 140, 140);
+
+            // Radar background circle
+            radarCtx.save();
+            radarCtx.beginPath();
+            radarCtx.arc(70, 70, 68, 0, Math.PI * 2);
+            radarCtx.fillStyle = '#060a12';
+            radarCtx.fill();
+
+            // Concentric range circles
+            radarCtx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
+            radarCtx.lineWidth = 1;
+            [22, 44, 65].forEach(r => {
+                radarCtx.beginPath();
+                radarCtx.arc(70, 70, r, 0, Math.PI * 2);
+                radarCtx.stroke();
+            });
+
+            // Crosshair lines
+            radarCtx.beginPath();
+            radarCtx.moveTo(70, 5); radarCtx.lineTo(70, 135);
+            radarCtx.moveTo(5, 70); radarCtx.lineTo(135, 70);
+            radarCtx.stroke();
+
+            const mapScale = 140 / 3000;
+
+            // Viewport Sector indicator (quadrant)
+            const vpW = (canvas.width * mapScale);
+            const vpH = (canvas.height * mapScale);
+            const vpX = (myPos.x * mapScale) - vpW / 2;
+            const vpY = (myPos.y * mapScale) - vpH / 2;
+
+            radarCtx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            radarCtx.fillStyle = 'rgba(56, 189, 248, 0.08)';
+            radarCtx.strokeRect(vpX, vpY, vpW, vpH);
+            radarCtx.fillRect(vpX, vpY, vpW, vpH);
+
+            // Blip Entities
+            for (let [id, e] of entities) {
+                const bx = e.currentX * mapScale;
+                const by = e.currentY * mapScale;
+                const isMe = id === myID;
+
+                radarCtx.beginPath();
+                radarCtx.arc(bx, by, isMe ? 3.5 : 2, 0, Math.PI * 2);
+                radarCtx.fillStyle = isMe ? '#00f0ff' : e.color;
+                radarCtx.shadowColor = isMe ? '#00f0ff' : e.color;
+                radarCtx.shadowBlur = isMe ? 8 : 4;
+                radarCtx.fill();
+                radarCtx.shadowBlur = 0;
+            }
+
+            radarCtx.restore();
+        }
+
         requestAnimationFrame(render);
     </script>
 </body>
