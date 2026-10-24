@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,277 +8,318 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0b0e14; color: #f0f2f5; }
+        :root {
+            --bg-base: #09090b;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+            background-size: 24px 24px;
+            color: #f4f4f5;
+        }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        .glass { background: rgba(22, 27, 34, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(48, 54, 61, 0.8); }
-        .glass-card { background: #12161f; border: 1px solid #232936; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
-        .glass-card:hover { transform: translateY(-4px); border-color: #58a6ff; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(88, 166, 255, 0.15); }
-        .preview-canvas { border-radius: 8px; border: 1px solid #232936; background: #080b10; }
-        .toggle-btn.active { background-color: #1f6feb; color: #ffffff; border-color: #58a6ff; }
+        
+        /* Glassmorphism */
+        .glass-nav {
+            background: rgba(9, 9, 11, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: rgba(18, 20, 29, 0.65);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            background: rgba(22, 26, 38, 0.75);
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+        .card-emerald:hover {
+            box-shadow: 0 16px 36px -10px rgba(16, 185, 129, 0.15), 0 0 0 1px rgba(16, 185, 129, 0.3);
+        }
+        .card-blue:hover {
+            box-shadow: 0 16px 36px -10px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.3);
+        }
+        .card-amber:hover {
+            box-shadow: 0 16px 36px -10px rgba(245, 158, 11, 0.15), 0 0 0 1px rgba(245, 158, 11, 0.3);
+        }
+
+        .preview-canvas {
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: #050608;
+        }
+
+        /* Pulse Status Animation */
+        @keyframes healthPulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .pulse-live { animation: healthPulse 2s infinite ease-in-out; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-blue-600 selection:text-white">
 
-    <!-- Top Navigation -->
-    <header class="glass sticky top-0 z-50 px-6 py-4 border-b border-gray-800">
+    <!-- Top Navigation & Global Header -->
+    <header class="glass-nav sticky top-0 z-50 px-6 py-3.5">
         <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            
+            <!-- Brand Badge -->
             <div class="flex items-center gap-3">
-                <div class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
-                <span class="font-extrabold text-lg tracking-tight text-white flex items-center gap-2">
-                    ⚡ High-Concurrency Systems Hub
-                </span>
-                <span class="hidden md:inline-flex text-xs bg-gray-800 text-gray-300 px-2.5 py-1 rounded-full font-mono border border-gray-700">
-                    Go 1.23+ • Redis 7.2 • Postgres 16 • Nginx Gateway
-                </span>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 border border-blue-400/30">
+                    <span class="text-sm">⚡</span>
+                </div>
+                <div>
+                    <span class="font-extrabold text-sm sm:text-base tracking-tight text-white flex items-center gap-2">
+                        High-Concurrency Systems Hub
+                    </span>
+                    <span class="block text-[10px] text-zinc-400 font-mono">
+                        Distributed Architecture • Go • Redis • Postgres • Nginx
+                    </span>
+                </div>
             </div>
 
-            <!-- Mode Switcher -->
+            <!-- Routing Mode Toggle & Links -->
             <div class="flex items-center gap-3">
-                <div class="flex items-center bg-gray-900 p-1 rounded-lg border border-gray-800 text-xs font-mono">
-                    <button id="btn-mode-gateway" onclick="setMode('gateway')" class="toggle-btn active px-3 py-1.5 rounded-md transition font-semibold">
+                <div class="flex items-center bg-zinc-900/90 p-1 rounded-lg border border-zinc-800 text-xs font-mono">
+                    <button id="btn-mode-gateway" onclick="setMode('gateway')" class="px-3 py-1.5 rounded-md transition font-medium bg-blue-600 text-white shadow-sm">
                         🌐 Nginx Gateway (:80)
                     </button>
-                    <button id="btn-mode-direct" onclick="setMode('direct')" class="toggle-btn px-3 py-1.5 rounded-md text-gray-400 hover:text-gray-200 transition font-semibold">
+                    <button id="btn-mode-direct" onclick="setMode('direct')" class="px-3 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200 transition font-medium">
                         🔌 Puertos Directos (:8080-82)
                     </button>
                 </div>
-                <a href="https://github.com/CXarlosss/high-concurrency-distributed-portfolio" target="_blank" class="hidden sm:flex px-3.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition items-center gap-2 text-xs">
+
+                <a href="https://github.com/CXarlosss/high-concurrency-distributed-portfolio" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700/80 transition flex items-center gap-2 text-xs font-medium shadow-sm">
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                    <span>Repo</span>
+                    <span>GitHub Repo</span>
                 </a>
             </div>
         </div>
     </header>
 
-    <!-- Main Showcase -->
-    <main class="max-w-7xl mx-auto px-6 py-10 flex-1 flex flex-col justify-center">
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-6 py-8 flex-1 flex flex-col justify-center">
 
-        <!-- Hero Header -->
-        <div class="text-center max-w-3xl mx-auto mb-10">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800 text-blue-400 text-xs font-mono mb-4">
+        <!-- Hero Section -->
+        <div class="text-center max-w-3xl mx-auto mb-8">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/60 border border-blue-800/80 text-blue-400 text-[11px] font-mono mb-3">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
                 PORTFOLIO DE INGENIERÍA STAFF BACKEND
             </div>
-            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-4 leading-tight">
-                Portfolio Hub & API Gateway
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-3 leading-tight">
+                Distributed Core Systems &amp; Concurrency Hub
             </h1>
-            <p class="text-gray-400 text-sm sm:text-base leading-relaxed">
-                Centralización transparente de 3 motores backend de alto rendimiento. Enrutamiento unificado de WebSockets, telemetría y estado persistente bajo arquitectura de microservicios con Docker y Nginx.
+            <p class="text-zinc-400 text-sm sm:text-base leading-relaxed">
+                3 motores de alta escala diseñados en <span class="text-white font-semibold">Go</span> sin intermediarios. Cero alocaciones en hot paths, particionado espacial, cerrojos fraccionados y transacciones atómicas distribuidas.
             </p>
         </div>
 
-        <!-- DevOps Architecture Strip -->
-        <div class="mb-10 p-4 rounded-xl glass border border-gray-800 flex flex-col lg:flex-row items-center justify-between gap-4 font-mono text-xs">
-            <div class="flex items-center gap-2 text-gray-300">
-                <span class="text-blue-400 font-bold">NGINX REVERSE PROXY:</span>
-                <span class="text-gray-400">http://localhost:80</span>
-                <span class="text-gray-600">➔</span>
-                <span class="text-emerald-400">/pixelwar/</span>
-                <span class="text-gray-600">|</span>
-                <span class="text-blue-400">/arena/</span>
-                <span class="text-gray-600">|</span>
-                <span class="text-amber-400">/uber/</span>
+        <!-- Global Metrics HUD (4 Animated Counters) -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass-card p-4 rounded-xl text-center">
+                <span class="block text-[11px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Capacidad Concurrente</span>
+                <span id="counter-vus" class="text-2xl sm:text-3xl font-bold font-mono text-emerald-400">0</span>
+                <span class="block text-[11px] text-zinc-500 mt-0.5">k6 stress testing (100% 101)</span>
+            </div>
+            <div class="glass-card p-4 rounded-xl text-center">
+                <span class="block text-[11px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Tick Physics / AoI</span>
+                <span id="counter-physics" class="text-2xl sm:text-3xl font-bold font-mono text-blue-400">0 µs</span>
+                <span class="block text-[11px] text-zinc-500 mt-0.5">Spatial Hash Grid 2D</span>
+            </div>
+            <div class="glass-card p-4 rounded-xl text-center">
+                <span class="block text-[11px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Throughput GPS</span>
+                <span id="counter-gps" class="text-2xl sm:text-3xl font-bold font-mono text-purple-400">0 /s</span>
+                <span class="block text-[11px] text-zinc-500 mt-0.5">Pipelined Redis GEO</span>
+            </div>
+            <div class="glass-card p-4 rounded-xl text-center">
+                <span class="block text-[11px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">GC Stalls (30 TPS)</span>
+                <span id="counter-gc" class="text-2xl sm:text-3xl font-bold font-mono text-amber-400">0 ms</span>
+                <span class="block text-[11px] text-zinc-500 mt-0.5">Zero-Alloc Buffer Pool</span>
+            </div>
+        </div>
+
+        <!-- Terminal Quickstart Drawer -->
+        <div class="mb-8 p-3.5 rounded-xl glass-card flex flex-col md:flex-row items-center justify-between gap-3 text-xs font-mono">
+            <div class="flex items-center gap-2 text-zinc-300">
+                <span class="text-blue-400 font-bold">TERMINAL QUICKSTART:</span>
+                <span class="text-zinc-400">Ejecuta el clúster con 1 comando:</span>
             </div>
             <div class="flex items-center gap-3">
-                <span class="text-gray-400">Despliegue unificado:</span>
-                <div class="bg-black/60 px-3 py-1.5 rounded border border-gray-700 text-gray-200 flex items-center gap-2">
-                    <code>docker compose up --build</code>
-                    <button onclick="copyCommand()" title="Copiar comando" class="text-gray-400 hover:text-white transition">
+                <div class="bg-black/80 px-3.5 py-1.5 rounded-md border border-zinc-800 text-zinc-300 flex items-center gap-2">
+                    <span class="text-emerald-400">$</span>
+                    <code id="cmd-text">docker compose up --build</code>
+                    <button onclick="copyCommand()" title="Copiar comando" class="text-zinc-500 hover:text-white transition ml-1">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                     </button>
                 </div>
+                <button onclick="switchTerminalCmd()" class="text-[11px] text-zinc-400 hover:text-zinc-200 transition underline underline-offset-4">
+                    ver script PowerShell
+                </button>
             </div>
         </div>
 
-        <!-- Global Telemetry Strip -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-            <div class="glass p-4 rounded-xl border border-gray-800 text-center">
-                <span class="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">WebSockets Pico</span>
-                <span class="text-2xl sm:text-3xl font-bold font-mono text-emerald-400">5.000 VUs</span>
-                <span class="block text-[11px] text-gray-500 mt-1">100% éxito handshake (101)</span>
-            </div>
-            <div class="glass p-4 rounded-xl border border-gray-800 text-center">
-                <span class="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Detección Colisiones</span>
-                <span class="text-2xl sm:text-3xl font-bold font-mono text-blue-400">62 µs</span>
-                <span class="block text-[11px] text-gray-500 mt-1">Spatial Hash (0 allocs/op)</span>
-            </div>
-            <div class="glass p-4 rounded-xl border border-gray-800 text-center">
-                <span class="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Ingesta GPS Flota</span>
-                <span class="text-2xl sm:text-3xl font-bold font-mono text-purple-400">56.497 /s</span>
-                <span class="block text-[11px] text-gray-500 mt-1">Pipelined Redis GEO</span>
-            </div>
-            <div class="glass p-4 rounded-xl border border-gray-800 text-center">
-                <span class="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Matching Atómico</span>
-                <span class="text-2xl sm:text-3xl font-bold font-mono text-amber-400">466 µs</span>
-                <span class="block text-[11px] text-gray-500 mt-1">Redis Lua EVALSHA + XADD</span>
-            </div>
-        </div>
-
-        <!-- The 3 Project Cards -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- The 3 Core Projects Cards -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             <!-- Card 1: Pixel War -->
-            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">
+            <div class="glass-card card-emerald rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div>
+                    <!-- Header & Health Pulse Badge -->
                     <div class="flex justify-between items-start mb-3">
                         <span class="text-3xl">🎨</span>
-                        <div class="flex items-center gap-1.5 font-mono text-xs">
-                            <span id="badge-port-pixel" class="px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800">
-                                /pixelwar/
-                            </span>
+                        <div id="health-pixel" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-live"></span>
+                            <span id="health-pixel-txt">● LIVE :8080</span>
                         </div>
                     </div>
-                    <h2 class="text-2xl font-bold text-white mb-1">Pixel War (r/place)</h2>
-                    <p class="text-xs uppercase tracking-wider text-emerald-400 font-semibold mb-3">Lienzo Colaborativo de 1M Píxeles</p>
 
-                    <!-- Interactive Canvas Preview -->
+                    <h2 class="text-xl font-bold text-white mb-1">Pixel War (r/place)</h2>
+                    <p class="text-xs uppercase tracking-wider text-emerald-400 font-semibold mb-3">Lienzo 1M Px • Protocolo Binario</p>
+
+                    <!-- Interactive Live Preview Canvas -->
                     <div class="relative mb-4">
-                        <canvas id="preview-pixel" class="preview-canvas w-full h-36" width="320" height="144"></canvas>
-                        <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-[10px] font-mono text-emerald-300 border border-emerald-900/50">
+                        <canvas id="preview-pixel" class="preview-canvas w-full h-32" width="320" height="128"></canvas>
+                        <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/80 text-[10px] font-mono text-emerald-300 border border-emerald-900/50">
                             5-byte Delta Broadcast
                         </div>
                     </div>
 
-                    <p class="text-gray-400 text-xs mb-4 leading-relaxed">
-                        Estado masivo en memoria con 64 cerrojos fraccionados (Striped Locks) y difusión binaria compacta de 5 bytes sin overhead JSON.
+                    <p class="text-zinc-400 text-xs mb-4 leading-relaxed">
+                        Manejo de estado masivo en memoria con 64 cerrojos particionados (<code class="text-zinc-300">sync.RWMutex</code>) y difusión de deltas binarios sin overhead JSON.
                     </p>
 
-                    <div class="space-y-2 mb-6 text-xs text-gray-300">
+                    <div class="space-y-2 mb-6 text-xs text-zinc-300">
                         <div class="flex items-start gap-2">
                             <span class="text-emerald-400 font-bold">✓</span>
-                            <span><strong>1M píxeles en 976.5 KB</strong> (0 allocs/op en mutación).</span>
+                            <span><strong>1M píxeles en 976.5 KB</strong> (0 allocs en mutación de heap).</span>
                         </div>
                         <div class="flex items-start gap-2">
                             <span class="text-emerald-400 font-bold">✓</span>
-                            <span><strong>k6 validado a 5.000 VUs</strong> con latencia p95 de 1.38ms.</span>
+                            <span><strong>k6 validado a 5.000 VUs</strong> con latencia p95 de 1.38 ms.</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-gray-800 flex flex-col gap-2">
-                    <a id="link-pixel-main" href="/pixelwar/" target="_blank" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-center transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 text-sm">
+                <div class="pt-4 border-t border-zinc-800 flex flex-col gap-2">
+                    <a id="link-pixel-main" href="http://localhost:8080" target="_blank" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-center transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 text-sm">
                         <span>Lanzar Demo Live</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     </a>
-                    <div class="flex justify-between items-center text-xs text-gray-500 font-mono px-1">
-                        <a id="link-pixel-alt" href="http://localhost:8080" target="_blank" class="hover:text-gray-300 transition">
-                            Directo: :8080
-                        </a>
-                        <a href="./01-pixel-war/README.md" class="hover:text-emerald-400 transition">
-                            Doc &amp; Tests &rarr;
-                        </a>
+                    <div class="flex justify-between items-center text-xs text-zinc-500 font-mono px-1">
+                        <span id="route-pixel-desc">Directo: http://localhost:8080</span>
+                        <a href="./01-pixel-war/README.md" class="hover:text-emerald-400 transition">Doc &amp; Tests &rarr;</a>
                     </div>
                 </div>
             </div>
 
             <!-- Card 2: Arena .io -->
-            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">
+            <div class="glass-card card-blue rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div>
+                    <!-- Header & Health Pulse Badge -->
                     <div class="flex justify-between items-start mb-3">
                         <span class="text-3xl">🕹️</span>
-                        <div class="flex items-center gap-1.5 font-mono text-xs">
-                            <span id="badge-port-arena" class="px-2 py-0.5 rounded bg-blue-950/80 text-blue-400 border border-blue-800">
-                                /arena/
-                            </span>
+                        <div id="health-arena" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono bg-blue-950/80 text-blue-400 border border-blue-800/80">
+                            <span class="w-2 h-2 rounded-full bg-blue-400 pulse-live"></span>
+                            <span id="health-arena-txt">● LIVE :8081</span>
                         </div>
                     </div>
-                    <h2 class="text-2xl font-bold text-white mb-1">Arena .io Multiplayer</h2>
-                    <p class="text-xs uppercase tracking-wider text-blue-400 font-semibold mb-3">Motor de Juego a Tick Fijo (30 TPS)</p>
 
-                    <!-- Interactive Canvas Preview -->
+                    <h2 class="text-xl font-bold text-white mb-1">Arena .io Multiplayer</h2>
+                    <p class="text-xs uppercase tracking-wider text-blue-400 font-semibold mb-3">Motor Autoritativo a 30 TPS</p>
+
+                    <!-- Interactive Live Preview Canvas -->
                     <div class="relative mb-4">
-                        <canvas id="preview-arena" class="preview-canvas w-full h-36" width="320" height="144"></canvas>
-                        <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-[10px] font-mono text-blue-300 border border-blue-900/50">
+                        <canvas id="preview-arena" class="preview-canvas w-full h-32" width="320" height="128"></canvas>
+                        <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/80 text-[10px] font-mono text-blue-300 border border-blue-900/50">
                             Spatial Grid (62 µs)
                         </div>
                     </div>
 
-                    <p class="text-gray-400 text-xs mb-4 leading-relaxed">
-                        Servidor autoritativo en Go con Spatial Hash Grid 2D, cálculo AoI instantáneo, ring buffers circulares y escudo anti-speed hacks.
+                    <p class="text-zinc-400 text-xs mb-4 leading-relaxed">
+                        Servidor autoritativo en Go con Spatial Hash Grid 2D, cálculo de Área de Interés (AoI), ring buffers y escudo anti speed-hacks.
                     </p>
 
-                    <div class="space-y-2 mb-6 text-xs text-gray-300">
+                    <div class="space-y-2 mb-6 text-xs text-zinc-300">
                         <div class="flex items-start gap-2">
                             <span class="text-blue-400 font-bold">✓</span>
                             <span><strong>Spatial Hash Grid en 62 µs</strong> (-96.6% CPU vs O(N²)).</span>
                         </div>
                         <div class="flex items-start gap-2">
                             <span class="text-blue-400 font-bold">✓</span>
-                            <span><strong>>31.000 ataques neutralizados</strong> (0 speed-hacks tolerados).</span>
+                            <span><strong>100% speed-hacks neutralizados</strong> (>31.000 ataques de bot).</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-gray-800 flex flex-col gap-2">
-                    <a id="link-arena-main" href="/arena/" target="_blank" class="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-center transition flex items-center justify-center gap-2 shadow-lg shadow-blue-900/30 text-sm">
+                <div class="pt-4 border-t border-zinc-800 flex flex-col gap-2">
+                    <a id="link-arena-main" href="http://localhost:8081" target="_blank" class="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-center transition flex items-center justify-center gap-2 shadow-lg shadow-blue-950/50 text-sm">
                         <span>Lanzar Demo Live</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     </a>
-                    <div class="flex justify-between items-center text-xs text-gray-500 font-mono px-1">
-                        <a id="link-arena-alt" href="http://localhost:8081" target="_blank" class="hover:text-gray-300 transition">
-                            Directo: :8081
-                        </a>
-                        <a href="./02-arena-io/README.md" class="hover:text-blue-400 transition">
-                            Netcode &amp; GC &rarr;
-                        </a>
+                    <div class="flex justify-between items-center text-xs text-zinc-500 font-mono px-1">
+                        <span id="route-arena-desc">Directo: http://localhost:8081</span>
+                        <a href="./02-arena-io/README.md" class="hover:text-blue-400 transition">Netcode &amp; GC &rarr;</a>
                     </div>
                 </div>
             </div>
 
             <!-- Card 3: Uber Matching -->
-            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">
+            <div class="glass-card card-amber rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div>
+                    <!-- Header & Health Pulse Badge -->
                     <div class="flex justify-between items-start mb-3">
                         <span class="text-3xl">🚗</span>
-                        <div class="flex items-center gap-1.5 font-mono text-xs">
-                            <span id="badge-port-uber" class="px-2 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800">
-                                /uber/
-                            </span>
+                        <div id="health-uber" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono bg-amber-950/80 text-amber-400 border border-amber-800/80">
+                            <span class="w-2 h-2 rounded-full bg-amber-400 pulse-live"></span>
+                            <span id="health-uber-txt">● LIVE :8082</span>
                         </div>
                     </div>
-                    <h2 class="text-2xl font-bold text-white mb-1">Uber Matching Engine</h2>
+
+                    <h2 class="text-xl font-bold text-white mb-1">Uber Matching Engine</h2>
                     <p class="text-xs uppercase tracking-wider text-amber-400 font-semibold mb-3">Despacho Geoespacial Distribuido</p>
 
-                    <!-- Interactive Canvas Preview -->
+                    <!-- Interactive Live Preview Canvas -->
                     <div class="relative mb-4">
-                        <canvas id="preview-uber" class="preview-canvas w-full h-36" width="320" height="144"></canvas>
-                        <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-[10px] font-mono text-amber-300 border border-amber-900/50">
+                        <canvas id="preview-uber" class="preview-canvas w-full h-32" width="320" height="128"></canvas>
+                        <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/80 text-[10px] font-mono text-amber-300 border border-amber-900/50">
                             Radius Stepping (3.8ms)
                         </div>
                     </div>
 
-                    <p class="text-gray-400 text-xs mb-4 leading-relaxed">
-                        Despacho para 50.000 vehículos simultáneos con Radius Stepping sobre Redis GEO, transaccionalidad atómica Lua y Transactional Outbox.
+                    <p class="text-zinc-400 text-xs mb-4 leading-relaxed">
+                        Despacho para 50.000 vehículos simultáneos con Radius Stepping sobre Redis GEO, scripts Lua atómicos y Transactional Outbox.
                     </p>
 
-                    <div class="space-y-2 mb-6 text-xs text-gray-300">
+                    <div class="space-y-2 mb-6 text-xs text-zinc-300">
                         <div class="flex items-start gap-2">
                             <span class="text-amber-400 font-bold">✓</span>
-                            <span><strong>0 doble asignación y 0 conductores zombi</strong> con Lua &amp; Reaper.</span>
+                            <span><strong>0 doble asignación y 0 zombis</strong> vía Lua y Reaper worker.</span>
                         </div>
                         <div class="flex items-start gap-2">
                             <span class="text-amber-400 font-bold">✓</span>
-                            <span><strong>PostgreSQL Event Sourcing</strong> con retención PEL ante caídas.</span>
+                            <span><strong>PostgreSQL Event-Sourcing</strong> con recuperación PEL ante caídas.</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-gray-800 flex flex-col gap-2">
-                    <a id="link-uber-main" href="/uber/" target="_blank" class="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-center transition flex items-center justify-center gap-2 shadow-lg shadow-amber-900/30 text-sm">
+                <div class="pt-4 border-t border-zinc-800 flex flex-col gap-2">
+                    <a id="link-uber-main" href="http://localhost:8082" target="_blank" class="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-center transition flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50 text-sm">
                         <span>Lanzar Demo Live</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     </a>
-                    <div class="flex justify-between items-center text-xs text-gray-500 font-mono px-1">
-                        <a id="link-uber-alt" href="http://localhost:8082" target="_blank" class="hover:text-gray-300 transition">
-                            Directo: :8082
-                        </a>
-                        <a href="./03-uber-matching/README.md" class="hover:text-amber-400 transition">
-                            Lua &amp; Streams &rarr;
-                        </a>
+                    <div class="flex justify-between items-center text-xs text-zinc-500 font-mono px-1">
+                        <span id="route-uber-desc">Directo: http://localhost:8082</span>
+                        <a href="./03-uber-matching/README.md" class="hover:text-amber-400 transition">Lua &amp; Streams &rarr;</a>
                     </div>
                 </div>
             </div>
@@ -287,25 +328,23 @@
     </main>
 
     <!-- Footer -->
-    <footer class="glass border-t border-gray-800 py-6 px-6 text-center text-xs text-gray-500">
+    <footer class="glass-nav border-t border-zinc-800/80 py-5 px-6 text-center text-xs text-zinc-500">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
             <span>Portfolio de Arquitectura Backend y Concurrencia — Go, Redis, WebSockets, PostgreSQL &amp; Nginx</span>
             <div class="flex items-center gap-4 font-mono text-[11px]">
-                <span class="text-emerald-400">● 3 Microservicios + API Gateway</span>
-                <span>Docker Compose Orchestrated</span>
+                <span class="text-emerald-400 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> 3 Servicios Activos</span>
+                <span>Docker Clúster</span>
                 <span>Licencia MIT</span>
             </div>
         </div>
     </footer>
 
-    <!-- Interactive Animation & Routing Script -->
+    <!-- Interactive Scripts: Healthchecks, Mode Switcher, Animated Counters & Live Previews -->
     <script>
         // --- 1. Mode Switcher (Gateway vs Direct Ports) ---
-        let currentMode = (location.port === "80" || location.port === "" || location.protocol === "http:") && location.pathname !== "/" && !location.origin.includes(":808") ? "gateway" : "gateway";
-
-        // Auto-detect if loaded directly via file:// or non-80 port
-        if (location.protocol === 'file:' || (location.port && location.port !== '80')) {
-            currentMode = "direct";
+        let currentMode = "direct";
+        if (location.port === "80" || (location.protocol === "http:" && location.port === "" && !location.pathname.includes(".html"))) {
+            currentMode = "gateway";
         }
 
         function setMode(mode) {
@@ -317,69 +356,134 @@
             const aMain = document.getElementById('link-arena-main');
             const uMain = document.getElementById('link-uber-main');
 
-            const pBadge = document.getElementById('badge-port-pixel');
-            const aBadge = document.getElementById('badge-port-arena');
-            const uBadge = document.getElementById('badge-port-uber');
+            const pDesc = document.getElementById('route-pixel-desc');
+            const aDesc = document.getElementById('route-arena-desc');
+            const uDesc = document.getElementById('route-uber-desc');
 
             if (mode === 'gateway') {
-                btnGw.classList.add('active');
-                btnDir.classList.remove('active');
+                btnGw.className = "px-3 py-1.5 rounded-md transition font-medium bg-blue-600 text-white shadow-sm";
+                btnDir.className = "px-3 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200 transition font-medium";
                 pMain.href = "/pixelwar/";
                 aMain.href = "/arena/";
                 uMain.href = "/uber/";
-                pBadge.innerText = "/pixelwar/";
-                aBadge.innerText = "/arena/";
-                uBadge.innerText = "/uber/";
+                pDesc.innerText = "Gateway: /pixelwar/";
+                aDesc.innerText = "Gateway: /arena/";
+                uDesc.innerText = "Gateway: /uber/";
             } else {
-                btnDir.classList.add('active');
-                btnGw.classList.remove('active');
+                btnDir.className = "px-3 py-1.5 rounded-md transition font-medium bg-blue-600 text-white shadow-sm";
+                btnGw.className = "px-3 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200 transition font-medium";
                 pMain.href = "http://localhost:8080";
                 aMain.href = "http://localhost:8081";
                 uMain.href = "http://localhost:8082";
-                pBadge.innerText = "Puerto 8080";
-                aBadge.innerText = "Puerto 8081";
-                uBadge.innerText = "Puerto 8082";
+                pDesc.innerText = "Directo: :8080";
+                aDesc.innerText = "Directo: :8081";
+                uDesc.innerText = "Directo: :8082";
+            }
+            runHealthchecks();
+        }
+
+        // --- 2. Live Healthchecks (Polling every 3 seconds) ---
+        async function checkEndpoint(url) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1500);
+                await fetch(url, { signal: controller.signal, mode: 'no-cors', cache: 'no-store' });
+                clearTimeout(timeoutId);
+                return true;
+            } catch (e) {
+                return false;
             }
         }
-        setMode(currentMode);
 
-        function copyCommand() {
-            navigator.clipboard.writeText("docker compose up --build");
-            alert("¡Comando 'docker compose up --build' copiado al portapapeles!");
+        async function runHealthchecks() {
+            const isGw = currentMode === 'gateway';
+            const pixelUrl = isGw ? '/pixelwar/health' : 'http://localhost:8080/health';
+            const arenaUrl = isGw ? '/arena/health' : 'http://localhost:8081/health';
+            const uberUrl = isGw ? '/uber/health' : 'http://localhost:8082/health';
+
+            updateBadge('health-pixel', 'health-pixel-txt', await checkEndpoint(pixelUrl), isGw ? '/pixelwar/' : ':8080', 'emerald');
+            updateBadge('health-arena', 'health-arena-txt', await checkEndpoint(arenaUrl), isGw ? '/arena/' : ':8081', 'blue');
+            updateBadge('health-uber', 'health-uber-txt', await checkEndpoint(uberUrl), isGw ? '/uber/' : ':8082', 'amber');
         }
 
-        // --- 2. Live Interactive Canvas Previews ---
+        function updateBadge(badgeId, textId, isAlive, label, color) {
+            const badge = document.getElementById(badgeId);
+            const text = document.getElementById(textId);
+            if (!badge || !text) return;
 
-        // Preview 1: Pixel War (Simulated 5,000 VUs Painting Canvas)
+            if (isAlive) {
+                badge.className = `flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono bg-${color}-950/80 text-${color}-400 border border-${color}-800/80`;
+                text.innerHTML = `● LIVE ${label}`;
+            } else {
+                badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono bg-red-950/80 text-red-400 border border-red-800/80";
+                text.innerHTML = `○ DOWN ${label}`;
+            }
+        }
+
+        setInterval(runHealthchecks, 3000);
+        setTimeout(runHealthchecks, 300);
+
+        // --- 3. Animated Metric Counters on Load ---
+        function animateCounter(id, target, suffix = '', duration = 1200) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const startTime = performance.now();
+            function update(now) {
+                const progress = Math.min((now - startTime) / duration, 1);
+                const current = Math.floor(progress * target);
+                el.innerText = current.toLocaleString('es-ES') + suffix;
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        animateCounter('counter-vus', 5000, ' VUs');
+        animateCounter('counter-physics', 62, ' µs');
+        animateCounter('counter-gps', 56497, ' /s');
+        animateCounter('counter-gc', 0, ' ms');
+
+        // --- 4. Terminal Command Helper ---
+        let isDockerCmd = true;
+        function switchTerminalCmd() {
+            isDockerCmd = !isDockerCmd;
+            document.getElementById('cmd-text').innerText = isDockerCmd ? "docker compose up --build" : ".\\run_all.ps1";
+        }
+
+        function copyCommand() {
+            const text = document.getElementById('cmd-text').innerText;
+            navigator.clipboard.writeText(text);
+            alert(`Comando '${text}' copiado al portapapeles.`);
+        }
+
+        setMode(currentMode);
+
+        // --- 5. Interactive Canvas Previews ---
+
+        // Preview 1: Pixel War
         (function() {
             const canvas = document.getElementById('preview-pixel');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const colors = ['#ffffff', '#e4e4e4', '#888888', '#222222', '#ffa7d1', '#e50000', '#e59500', '#a06a42', '#e5d900', '#94e044', '#02be01', '#00d3dd', '#0083c7', '#0000ea', '#cf6ee4', '#820080'];
-            
-            // Draw grid base
-            ctx.fillStyle = '#10141d';
+            ctx.fillStyle = '#0a0d14';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            function paintRandomPixels() {
-                for (let i = 0; i < 6; i++) {
+
+            setInterval(() => {
+                for (let i = 0; i < 5; i++) {
                     const x = Math.floor(Math.random() * canvas.width);
                     const y = Math.floor(Math.random() * canvas.height);
-                    const c = colors[Math.floor(Math.random() * colors.length)];
-                    ctx.fillStyle = c;
+                    ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
                     ctx.fillRect(x, y, 3, 3);
                 }
-            }
-            setInterval(paintRandomPixels, 40);
+            }, 50);
         })();
 
-        // Preview 2: Arena .io (Simulated 30 TPS AoI Movement)
+        // Preview 2: Arena .io
         (function() {
             const canvas = document.getElementById('preview-arena');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
-
-            const bots = Array.from({ length: 8 }, (_, i) => ({
+            const bots = Array.from({ length: 7 }, (_, i) => ({
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
                 vx: (Math.random() - 0.5) * 1.5,
@@ -388,8 +492,8 @@
                 color: ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff'][i % 5]
             }));
 
-            function drawArena() {
-                ctx.fillStyle = 'rgba(9, 12, 16, 0.25)';
+            function draw() {
+                ctx.fillStyle = 'rgba(10, 13, 20, 0.3)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 for (let b of bots) {
@@ -403,67 +507,64 @@
                     ctx.fillStyle = b.color;
                     ctx.fill();
 
-                    // AoI subtle ring around the main entity
                     if (b === bots[0]) {
                         ctx.beginPath();
-                        ctx.arc(b.x, b.y, 25, 0, Math.PI * 2);
-                        ctx.strokeStyle = 'rgba(88, 166, 255, 0.3)';
+                        ctx.arc(b.x, b.y, 22, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
                         ctx.lineWidth = 1;
                         ctx.stroke();
                     }
                 }
-                requestAnimationFrame(drawArena);
+                requestAnimationFrame(draw);
             }
-            requestAnimationFrame(drawArena);
+            requestAnimationFrame(draw);
         })();
 
-        // Preview 3: Uber Matching (Simulated Madrid Radar & Radius Stepping)
+        // Preview 3: Uber Radar
         (function() {
             const canvas = document.getElementById('preview-uber');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const center = { x: canvas.width / 2, y: canvas.height / 2 };
-            let ringRadius = 5;
+            let ring = 5;
 
-            const drivers = Array.from({ length: 25 }, () => ({
-                x: center.x + (Math.random() - 0.5) * 180,
-                y: center.y + (Math.random() - 0.5) * 100,
-                status: Math.random() > 0.2 ? 'AVAILABLE' : 'BUSY'
+            const drivers = Array.from({ length: 22 }, () => ({
+                x: center.x + (Math.random() - 0.5) * 160,
+                y: center.y + (Math.random() - 0.5) * 90,
+                status: Math.random() > 0.25 ? 'AVAILABLE' : 'BUSY'
             }));
 
-            function drawUberRadar() {
-                ctx.fillStyle = 'rgba(11, 14, 20, 0.25)';
+            function draw() {
+                ctx.fillStyle = 'rgba(11, 14, 20, 0.3)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // Landmark Puerta del Sol
+                // Landmark
                 ctx.beginPath();
                 ctx.arc(center.x, center.y, 3, 0, Math.PI * 2);
                 ctx.fillStyle = '#58a6ff';
                 ctx.fill();
 
-                // Stepping Ring
-                ringRadius += 0.8;
-                if (ringRadius > 65) ringRadius = 5;
+                // Expanding Wave
+                ring += 0.8;
+                if (ring > 55) ring = 5;
 
                 ctx.beginPath();
-                ctx.arc(center.x, center.y, ringRadius, 0, Math.PI * 2);
-                ctx.strokeStyle = 'rgba(210, 153, 34, 0.6)';
+                ctx.arc(center.x, center.y, ring, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
                 ctx.setLineDash([4, 4]);
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
                 ctx.setLineDash([]);
 
-                // Drivers
                 for (let d of drivers) {
                     ctx.beginPath();
                     ctx.arc(d.x, d.y, 2, 0, Math.PI * 2);
-                    ctx.fillStyle = d.status === 'AVAILABLE' ? '#3fb950' : '#f85149';
+                    ctx.fillStyle = d.status === 'AVAILABLE' ? '#10b981' : '#ef4444';
                     ctx.fill();
                 }
-
-                requestAnimationFrame(drawUberRadar);
+                requestAnimationFrame(draw);
             }
-            requestAnimationFrame(drawUberRadar);
+            requestAnimationFrame(draw);
         })();
     </script>
 </body>
