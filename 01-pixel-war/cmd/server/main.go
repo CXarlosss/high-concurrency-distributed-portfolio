@@ -90,6 +90,11 @@ func main() {
 		_, _ = w.Write([]byte("OK"))
 	})
 
+	// Favicon no-content handler
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	// Serve thin client frontend
 	http.Handle("/", http.FileServer(http.Dir("./web")))
 

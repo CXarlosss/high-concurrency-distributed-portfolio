@@ -15,6 +15,11 @@ func main() {
 		_, _ = w.Write([]byte("OK"))
 	})
 
+	// Favicon no-content handler
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	port := ":8082"
 	log.Printf("[Server] Uber Matching Engine Geospatial Radar listening on %s", port)
 	srv := &http.Server{
