@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel War (r/place) — High-Concurrency Canvas</title>
+    <title>Pixel War (r/place) — High-Concurrency Canvas Engineering Console</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background-color: #0f1117;
-            color: #f0f2f5;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #09090b;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+            background-size: 24px 24px;
+            color: #f4f4f5;
+            font-family: 'Inter', -apple-system, sans-serif;
             overflow: hidden;
             height: 100vh;
             display: flex;
@@ -18,247 +23,497 @@
             user-select: none;
         }
 
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Top Header */
         header {
             padding: 10px 20px;
-            background: rgba(22, 27, 34, 0.95);
-            backdrop-filter: blur(8px);
+            background: rgba(14, 17, 23, 0.85);
+            backdrop-filter: blur(16px);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #30363d;
-            z-index: 10;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .title-group {
-            display: flex;
-            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 30;
             gap: 12px;
         }
 
+        .title-group { display: flex; align-items: center; gap: 12px; }
         .status-badge {
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 13px;
+            font-size: 12px;
             padding: 4px 10px;
-            border-radius: 12px;
-            background: #1c2128;
-            border: 1px solid #30363d;
+            border-radius: 20px;
+            background: rgba(22, 27, 34, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-
         .status-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #e5534b;
+            background: #ef4444;
         }
         .status-dot.connected {
-            background: #2ea043;
-            box-shadow: 0 0 8px #2ea043;
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
         }
 
-        .controls-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 13px;
-        }
+        .controls-group { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 
-        .brush-group {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: #161b22;
-            padding: 3px 6px;
+        .btn-ui {
+            background: rgba(24, 27, 37, 0.85);
+            color: #d4d4d8;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 5px 12px;
             border-radius: 8px;
-            border: 1px solid #30363d;
-        }
-
-        .brush-btn {
-            background: transparent;
-            color: #8b949e;
-            border: none;
-            padding: 3px 8px;
-            border-radius: 4px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.15s;
-        }
-        .brush-btn:hover { color: #f0f2f5; }
-        .brush-btn.active {
-            background: #1f6feb;
-            color: #ffffff;
-        }
-
-        .sim-btn {
-            background: #238636;
-            color: #ffffff;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
             display: flex;
             align-items: center;
             gap: 6px;
-            transition: background 0.15s;
         }
-        .sim-btn:hover { background: #2ea043; }
-        .sim-btn.active { background: #da3633; }
-
-        .coords-badge {
-            font-family: monospace;
-            font-size: 12px;
-            color: #8b949e;
-            background: #161b22;
-            padding: 4px 10px;
-            border-radius: 6px;
-            border: 1px solid #30363d;
+        .btn-ui:hover {
+            background: rgba(39, 44, 60, 0.9);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.2);
         }
+        .btn-ui.active {
+            background: #1f6feb;
+            color: #ffffff;
+            border-color: #58a6ff;
+        }
+        .btn-sim {
+            background: #238636;
+            color: #ffffff;
+            border: none;
+        }
+        .btn-sim:hover { background: #2ea043; }
+        .btn-sim.active { background: #da3633; }
 
+        /* Viewport and Canvas Container */
         #viewport {
             flex: 1;
             position: relative;
             overflow: hidden;
             cursor: crosshair;
-            background: #090d16;
+            background: #06070a;
         }
-
         #canvas-wrapper {
             position: absolute;
             transform-origin: 0 0;
             image-rendering: pixelated;
         }
-
-        canvas {
+        canvas#canvas {
             display: block;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.9), 0 0 0 1px #30363d;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
             background: #ffffff;
             image-rendering: pixelated;
         }
 
-        .help-pill {
-            position: absolute;
-            bottom: 75px;
+        /* Tooltip HUD Flotante (Inspector de Memoria / Red) */
+        #pixel-inspector {
+            position: fixed;
+            display: none;
+            pointer-events: none;
+            z-index: 100;
+            background: rgba(11, 14, 22, 0.94);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-radius: 8px;
+            padding: 10px 14px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(59, 130, 246, 0.15);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            color: #e4e4e7;
+            min-width: 310px;
+        }
+        .hud-highlight { color: #58a6ff; font-weight: 600; }
+        .hud-sub { color: #94a3b8; }
+        .hud-payload { color: #34d399; font-weight: 700; letter-spacing: 0.05em; }
+
+        #btn-eyedropper svg {
+            width: 16px;
+            height: 16px;
+            display: block;
+        }
+
+        /* Floating Dock Inferior (Figma / Linear Style) */
+        #floating-dock {
+            position: fixed;
+            bottom: 22px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(22, 27, 34, 0.9);
-            border: 1px solid #30363d;
-            backdrop-filter: blur(8px);
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            color: #8b949e;
-            pointer-events: none;
-            z-index: 5;
-            transition: opacity 0.3s;
-        }
-
-        footer {
-            padding: 10px 20px;
-            background: rgba(22, 27, 34, 0.95);
-            backdrop-filter: blur(8px);
-            border-top: 1px solid #30363d;
+            z-index: 40;
+            background: rgba(18, 21, 30, 0.88);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 18px;
+            padding: 8px 16px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 6px;
-            z-index: 10;
-            overflow-x: auto;
+            gap: 14px;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
         }
 
+        /* 32-Color Palette Bar */
+        #palette-container {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
         .color-swatch {
-            width: 28px;
-            height: 28px;
-            border-radius: 4px;
+            width: 22px;
+            height: 22px;
+            border-radius: 5px;
             cursor: pointer;
             border: 2px solid transparent;
-            transition: transform 0.1s, border-color 0.1s;
-            flex-shrink: 0;
+            transition: all 0.12s;
+            position: relative;
         }
         .color-swatch:hover {
-            transform: scale(1.15);
+            transform: scale(1.22);
+            z-index: 2;
         }
         .color-swatch.active {
             border-color: #ffffff;
-            transform: scale(1.2);
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            transform: scale(1.25);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+            z-index: 3;
         }
+
+        .dock-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Cooldown Progress Ring */
+        .cooldown-widget {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #10b981;
+        }
+        .cooldown-ring-svg {
+            width: 22px;
+            height: 22px;
+            transform: rotate(-90deg);
+        }
+        .cooldown-ring-circle {
+            stroke-dasharray: 56;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 0.05s linear;
+        }
+
+        /* Minimapa Táctico con Heatmap en Vivo */
+        #minimap-card {
+            position: fixed;
+            bottom: 22px;
+            right: 22px;
+            z-index: 40;
+            background: rgba(18, 21, 30, 0.9);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .minimap-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #8b949e;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 0 2px;
+        }
+        #mini-canvas {
+            display: block;
+            width: 150px;
+            height: 150px;
+            background: #06080d;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+        }
+
+        /* Sidebar Colapsable de Telemetría de Red */
+        #telemetry-drawer {
+            position: fixed;
+            top: 54px;
+            right: 0;
+            bottom: 0;
+            width: 320px;
+            background: rgba(14, 17, 26, 0.92);
+            backdrop-filter: blur(18px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 35;
+            display: flex;
+            flex-direction: column;
+            padding: 18px;
+            gap: 16px;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: -15px 0 40px rgba(0, 0, 0, 0.7);
+        }
+        #telemetry-drawer.open { transform: translateX(0); }
+
+        .telemetry-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            color: #58a6ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 8px;
+        }
+
+        .stat-card {
+            background: rgba(22, 27, 38, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .stat-label { font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: 600; }
+        .stat-val { font-size: 18px; font-weight: bold; color: #10b981; font-family: 'JetBrains Mono', monospace; }
+        .stat-sub { font-size: 11px; color: #6e7681; }
+
+        .chart-box {
+            background: #07090e;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 8px;
+        }
+
+        /* 64-Mutex Grid Visualization */
+        #mutex-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            background: #080a10;
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .mutex-cell {
+            width: 100%;
+            height: 8px;
+            background: #1c212c;
+            border-radius: 2px;
+            transition: background 0.15s;
+        }
+        .mutex-cell.active { background: #38bdf8; }
     </style>
 </head>
 <body>
+
+    <!-- Header -->
     <header>
         <div class="title-group">
-            <h2 style="font-size: 18px;">🎨 Pixel War</h2>
-            <span class="status-badge">
+            <span class="text-xl">🎨</span>
+            <div>
+                <h1 style="font-size: 15px; font-weight: 700; color: #ffffff;">Pixel War</h1>
+                <span style="font-size: 10px; color: #8b949e; font-family: 'JetBrains Mono';">1M Pixels • 64-Stripe Lock • 5-Byte Delta</span>
+            </div>
+            <div class="status-badge font-mono">
                 <span id="ws-dot" class="status-dot"></span>
                 <span id="ws-status">Conectando...</span>
-            </span>
+            </div>
         </div>
 
         <div class="controls-group">
-            <!-- Brush Size Picker -->
-            <div class="brush-group">
-                <span style="color: #8b949e; font-size: 11px; margin-right: 4px;">TAMAÑO:</span>
-                <button class="brush-btn" onclick="setBrush(1)">1px</button>
-                <button class="brush-btn active" onclick="setBrush(3)">3px</button>
-                <button class="brush-btn" onclick="setBrush(6)">6px</button>
-                <button class="brush-btn" onclick="setBrush(10)">10px</button>
+            <!-- Brush Sizes -->
+            <div style="display: flex; gap: 2px; background: rgba(22,27,38,0.8); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                <button class="btn-ui" style="padding: 3px 8px; font-size: 11px;" onclick="setBrush(1)">1px</button>
+                <button class="btn-ui active" style="padding: 3px 8px; font-size: 11px;" onclick="setBrush(3)">3px</button>
+                <button class="btn-ui" style="padding: 3px 8px; font-size: 11px;" onclick="setBrush(6)">6px</button>
             </div>
 
-            <!-- Bot Simulator Toggle -->
-            <button id="btn-bots" class="sim-btn" onclick="toggleBotTraffic()">
+            <!-- Bot Traffic Simulator -->
+            <button id="btn-bots" class="btn-ui btn-sim" onclick="toggleBotTraffic()">
                 <span>⚡ Simular Bots (50 VUs)</span>
             </button>
 
-            <!-- Reset View -->
-            <button class="brush-btn" style="border: 1px solid #30363d;" onclick="resetView()">
-                <span>Centrar Lienzo</span>
+            <!-- Telemetry Drawer Toggle Button -->
+            <button class="btn-ui" id="btn-toggle-telemetry" onclick="toggleTelemetry()">
+                <span>📊 Telemetría</span>
             </button>
 
-            <div class="coords-badge">
-                <span id="coords-text">X: 0, Y: 0</span> | <span id="zoom-text">1.0x</span>
-            </div>
+            <!-- Reset Zoom -->
+            <button class="btn-ui" onclick="resetView()">
+                <span>Centrar</span>
+            </button>
         </div>
     </header>
 
+    <!-- Main Viewport -->
     <div id="viewport">
         <div id="canvas-wrapper">
             <canvas id="canvas" width="1000" height="1000"></canvas>
         </div>
-        <div class="help-pill" id="help-pill">
-            🖱️ Clic o arrastra para pintar • 🔍 Rueda para Zoom • ✋ Shift+Arrastra o botón central para mover
+    </div>
+
+    <!-- Tooltip HUD Flotante (Inspector de Memoria & Red) -->
+    <div id="pixel-inspector">
+        <div><span class="hud-sub">Coords:</span> <span id="insp-coords" class="hud-highlight">[X: 0000, Y: 0000]</span> <span class="hud-sub">|</span> <span class="hud-sub">Chunk:</span> <span id="insp-chunk" class="hud-highlight">#0 (Lock Mutex 0/64)</span></div>
+        <div><span class="hud-sub">Último autor:</span> <span id="insp-author" style="color: #fbbf24;">system-snapshot</span></div>
+        <div><span class="hud-sub">Raw Delta:</span> <span id="insp-payload" class="hud-payload">0x0000000000</span> <span class="hud-sub">(5 bytes Big-Endian)</span></div>
+    </div>
+
+    <!-- Floating Dock Inferior (Figma / Linear Style) -->
+    <div id="floating-dock">
+        <!-- Eyedropper Button -->
+        <button id="btn-eyedropper" class="btn-ui" onclick="toggleEyedropper()" title="Cuentagotas (Tecla I)">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+        </button>
+
+        <div class="dock-divider"></div>
+
+        <!-- 32 Curated Color Swatches -->
+        <div id="palette-container"></div>
+
+        <div class="dock-divider"></div>
+
+        <!-- Cooldown Progress Ring -->
+        <div class="cooldown-widget">
+            <svg class="cooldown-ring-svg">
+                <circle cx="11" cy="11" r="9" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2.5" />
+                <circle id="cooldown-circle" class="cooldown-ring-circle" cx="11" cy="11" r="9" fill="none" stroke="#10b981" stroke-width="2.5" />
+            </svg>
+            <span id="cooldown-label">READY</span>
+        </div>
+
+        <div class="dock-divider"></div>
+
+        <!-- Floating Zoom Controls -->
+        <div style="display: flex; gap: 4px;">
+            <button class="btn-ui" style="padding: 4px 8px;" onclick="zoomIn()">+</button>
+            <button class="btn-ui" style="padding: 4px 8px;" onclick="zoomOut()">-</button>
+            <button class="btn-ui" style="padding: 4px 8px; font-family: monospace;" id="dock-zoom" onclick="resetView()">1.0x</button>
         </div>
     </div>
 
-    <footer id="palette-bar"></footer>
+    <!-- Minimapa Táctico con Heatmap en Vivo -->
+    <div id="minimap-card">
+        <div class="minimap-header">
+            <span>Heatmap / Radar</span>
+            <span id="mini-density" style="color: #f59e0b;">50x50</span>
+        </div>
+        <canvas id="mini-canvas" width="150" height="150"></canvas>
+    </div>
 
+    <!-- Sidebar Colapsable de Telemetría de Red -->
+    <aside id="telemetry-drawer">
+        <div class="telemetry-title">
+            <span>Telemetría de Red &amp; Rendimiento</span>
+            <button class="btn-ui" style="padding: 2px 6px;" onclick="toggleTelemetry()">✕</button>
+        </div>
+
+        <!-- Realtime Throughput Chart -->
+        <div class="chart-box">
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #8b949e; margin-bottom: 4px;" class="font-mono">
+                <span>DELTAS / SEGUNDO</span>
+                <span id="chart-rate-val" style="color: #10b981; font-weight: bold;">0 d/s</span>
+            </div>
+            <canvas id="telemetry-chart" width="280" height="80"></canvas>
+        </div>
+
+        <!-- Bandwidth Savings Comparison -->
+        <div class="stat-card">
+            <span class="stat-label">Ahorro de Ancho de Banda</span>
+            <span class="stat-val" id="stat-savings">87.5%</span>
+            <span class="stat-sub">5 Bytes Binario vs ~42 Bytes JSON</span>
+        </div>
+
+        <div class="stat-card">
+            <span class="stat-label">Tráfico Acumulado</span>
+            <div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono'; font-size: 12px; margin-top: 4px;">
+                <span style="color: #10b981;" id="stat-bytes-bin">0 KB (Binario)</span>
+                <span style="color: #ef4444; text-decoration: line-through;" id="stat-bytes-json">0 KB (JSON)</span>
+            </div>
+        </div>
+
+        <!-- 64-Mutex Activity Matrix -->
+        <div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #8b949e; margin-bottom: 4px;" class="font-mono">
+                <span>MATRIZ 64-STRIPE RWMUTEX</span>
+                <span style="color: #38bdf8;">0 Concurrencia Lock</span>
+            </div>
+            <div id="mutex-grid"></div>
+        </div>
+    </aside>
+
+    <!-- Main Logic Script -->
     <script>
+        // --- 1. Harmonic 32-Color Palette ---
         const PALETTE = [
-            "#6D001A", "#BE0039", "#FF4500", "#FFA800", "#FFD635", "#FFF8B8",
-            "#00A368", "#00CC78", "#7EED56", "#00756F", "#009EAA", "#00CCC0",
-            "#2450A4", "#3690EA", "#51E9F4", "#493AC1", "#6A5CFF", "#94B3FF",
-            "#811E9F", "#B44AC0", "#E4ABFF", "#DE107F", "#FF3881", "#FF99AA",
-            "#6D482F", "#9C6926", "#FFB470", "#000000", "#515252", "#898D90",
-            "#D4D7D9", "#FFFFFF"
+            // Grayscales (0-5)
+            "#000000", "#27272a", "#52525b", "#71717a", "#d4d4d8", "#ffffff",
+            // Earth & Warm (6-9)
+            "#451a03", "#78350f", "#b45309", "#d97706",
+            // Reds & Oranges (10-14)
+            "#7f1d1d", "#dc2626", "#ef4444", "#f97316", "#fb923c",
+            // Yellows & Limes (15-17)
+            "#eab308", "#facc15", "#84cc16",
+            // Emeralds & Greens (18-21)
+            "#14532d", "#15803d", "#22c55e", "#4ade80",
+            // Cyans & Teals (22-24)
+            "#0f766e", "#06b6d4", "#22d3ee",
+            // Blues (25-28)
+            "#1e3a8a", "#1d4ed8", "#3b82f6", "#60a5fa",
+            // Purples & Pinks (29-31)
+            "#581c87", "#9333ea", "#c084fc", "#f43f5e"
         ];
 
-        let selectedColor = 2; // Default Orange-Red (#FF4500)
+        let selectedColor = 12; // Default Red
         let brushSize = 3;
+        let isEyedropper = false;
+
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const wrapper = document.getElementById('canvas-wrapper');
         const viewport = document.getElementById('viewport');
-        const coordsText = document.getElementById('coords-text');
-        const zoomText = document.getElementById('zoom-text');
         const wsDot = document.getElementById('ws-dot');
         const wsStatus = document.getElementById('ws-status');
+        const dockZoom = document.getElementById('dock-zoom');
 
-        // Pan and Zoom State
+        // Inspector Elements
+        const inspector = document.getElementById('pixel-inspector');
+        const inspCoords = document.getElementById('insp-coords');
+        const inspChunk = document.getElementById('insp-chunk');
+        const inspAuthor = document.getElementById('insp-author');
+        const inspPayload = document.getElementById('insp-payload');
+
+        // Minimap & Heatmap Elements
+        const miniCanvas = document.getElementById('mini-canvas');
+        const miniCtx = miniCanvas.getContext('2d');
+        const heatGrid = new Float32Array(50 * 50); // 50x50 density grid
+
+        // Sparse author map for inspection
+        const pixelAuthors = new Map(); // key -> { author, time }
+
+        // Local state buffer
+        const localCanvasState = new Uint8Array(1000 * 1000);
+
+        // Pan and Zoom
         let scale = 0.8;
         let panX = 0;
         let panY = 0;
@@ -268,12 +523,13 @@
 
         function updateTransform() {
             wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-            zoomText.innerText = scale.toFixed(1) + 'x';
+            dockZoom.innerText = scale.toFixed(1) + 'x';
+            renderMinimap();
         }
 
         function resetView() {
             const availW = viewport.clientWidth - 40;
-            const availH = viewport.clientHeight - 40;
+            const availH = viewport.clientHeight - 80;
             scale = Math.min(availW / 1000, availH / 1000, 1.0);
             if (scale < 0.4) scale = 0.4;
             panX = (viewport.clientWidth - 1000 * scale) / 2;
@@ -283,40 +539,105 @@
         window.addEventListener('resize', resetView);
         setTimeout(resetView, 50);
 
+        function zoomIn() {
+            scale = Math.min(scale * 1.3, 30.0);
+            updateTransform();
+        }
+        function zoomOut() {
+            scale = Math.max(scale / 1.3, 0.3);
+            updateTransform();
+        }
+
+        // --- 2. Build 32-Color Palette Dock ---
+        const paletteContainer = document.getElementById('palette-container');
+        PALETTE.forEach((hex, index) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch' + (index === selectedColor ? ' active' : '');
+            swatch.style.backgroundColor = hex;
+            swatch.title = `Color #${index} (${hex})`;
+            swatch.onclick = () => selectColor(index);
+            paletteContainer.appendChild(swatch);
+        });
+
+        function selectColor(index) {
+            selectedColor = index;
+            document.querySelectorAll('.color-swatch').forEach((s, idx) => {
+                if (idx === index) s.classList.add('active');
+                else s.classList.remove('active');
+            });
+            if (isEyedropper) toggleEyedropper();
+        }
+
+        // Hotkeys (1..9, 0, I, B, T)
+        window.addEventListener('keydown', (e) => {
+            if (e.key >= '1' && e.key <= '9') {
+                selectColor(parseInt(e.key) - 1);
+            } else if (e.key === '0') {
+                selectColor(9);
+            } else if (e.key.toLowerCase() === 'i') {
+                toggleEyedropper();
+            } else if (e.key.toLowerCase() === 't') {
+                toggleTelemetry();
+            } else if (e.key.toLowerCase() === 'b') {
+                toggleBotTraffic();
+            }
+        });
+
+        function toggleEyedropper() {
+            isEyedropper = !isEyedropper;
+            const btn = document.getElementById('btn-eyedropper');
+            if (isEyedropper) {
+                btn.classList.add('active');
+                viewport.style.cursor = 'copy';
+            } else {
+                btn.classList.remove('active');
+                viewport.style.cursor = 'crosshair';
+            }
+        }
+
         function setBrush(size) {
             brushSize = size;
-            document.querySelectorAll('.brush-btn').forEach(b => {
+            document.querySelectorAll('header .btn-ui').forEach(b => {
                 if (b.innerText === `${size}px`) b.classList.add('active');
                 else if (b.innerText.endsWith('px')) b.classList.remove('active');
             });
         }
 
-        // 1. Build Palette Bar
-        const paletteBar = document.getElementById('palette-bar');
-        PALETTE.forEach((hex, index) => {
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch' + (index === selectedColor ? ' active' : '');
-            swatch.style.backgroundColor = hex;
-            swatch.title = `Color ${index} (${hex})`;
-            swatch.onclick = () => {
-                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-                swatch.classList.add('active');
-                selectedColor = index;
-            };
-            paletteBar.appendChild(swatch);
-        });
+        // --- 3. Build 64-Mutex Grid in Drawer ---
+        const mutexGridEl = document.getElementById('mutex-grid');
+        for (let i = 0; i < 64; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'mutex-cell';
+            cell.id = `mutex-${i}`;
+            cell.title = `RWMutex Stripe #${i}`;
+            mutexGridEl.appendChild(cell);
+        }
 
-        // 2. Fetch Initial 1MB Binary Snapshot
+        function flashMutex(stripe) {
+            const el = document.getElementById(`mutex-${stripe}`);
+            if (el) {
+                el.classList.add('active');
+                setTimeout(() => el.classList.remove('active'), 120);
+            }
+        }
+
+        // --- 4. WebSocket & Binary Protocol ---
         const basePath = (() => {
             const path = location.pathname.replace(/\/index\.html$/, '');
             return path.endsWith('/') ? path.slice(0, -1) : path;
         })();
+
+        let totalDeltas = 0;
+        let deltasThisSecond = 0;
+        let ws;
 
         async function loadSnapshot() {
             try {
                 const res = await fetch(`${basePath}/canvas`);
                 const buf = await res.arrayBuffer();
                 const bytes = new Uint8Array(buf);
+                localCanvasState.set(bytes);
+
                 const imgData = ctx.createImageData(1000, 1000);
                 const data = imgData.data;
 
@@ -340,8 +661,6 @@
         }
         loadSnapshot();
 
-        // 3. Setup WebSocket Binary Protocol
-        let ws;
         function connectWS() {
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
             ws = new WebSocket(`${proto}//${location.host}${basePath}/ws`);
@@ -367,14 +686,40 @@
                     const y = view.getUint16(2, false);
                     const colorIdx = view.getUint8(4);
 
-                    ctx.fillStyle = PALETTE[colorIdx] || "#FFFFFF";
-                    ctx.fillRect(x, y, 1, 1);
+                    applyPixel(x, y, colorIdx, 'remote-client');
+                    totalDeltas++;
+                    deltasThisSecond++;
                 }
             };
         }
         connectWS();
 
-        // 4. Coordinate Conversion
+        function applyPixel(x, y, colorIdx, author = 'user') {
+            if (x < 0 || x >= 1000 || y < 0 || y >= 1000) return;
+
+            localCanvasState[y * 1000 + x] = colorIdx;
+            ctx.fillStyle = PALETTE[colorIdx] || "#FFFFFF";
+            ctx.fillRect(x, y, 1, 1);
+
+            // Accumulate heatmap with Gaussian spread
+            const hx = Math.floor(x / 20);
+            const hy = Math.floor(y / 20);
+            const idx = hy * 50 + hx;
+            heatGrid[idx] = Math.min(heatGrid[idx] + 0.45, 1.0);
+            if (hx > 0) heatGrid[idx - 1] = Math.min(heatGrid[idx - 1] + 0.15, 1.0);
+            if (hx < 49) heatGrid[idx + 1] = Math.min(heatGrid[idx + 1] + 0.15, 1.0);
+            if (hy > 0) heatGrid[idx - 50] = Math.min(heatGrid[idx - 50] + 0.15, 1.0);
+            if (hy < 49) heatGrid[idx + 50] = Math.min(heatGrid[idx + 50] + 0.15, 1.0);
+
+            // Flash lock stripe
+            const stripe = (y * 1000 + x) % 64;
+            flashMutex(stripe);
+
+            // Track metadata
+            pixelAuthors.set(`${x},${y}`, { author, time: Date.now() });
+        }
+
+        // --- 5. Painting and Drawing with Brush Size ---
         function getCanvasCoords(clientX, clientY) {
             const rect = viewport.getBoundingClientRect();
             const mouseX = clientX - rect.left;
@@ -384,26 +729,22 @@
             return { x: canvasX, y: canvasY };
         }
 
-        // 5. Drawing with Brush Size
         function paintBrush(cx, cy, colorIdx) {
+            triggerCooldown();
             const half = Math.floor(brushSize / 2);
             for (let dy = -half; dy < brushSize - half; dy++) {
                 for (let dx = -half; dx < brushSize - half; dx++) {
                     const px = cx + dx;
                     const py = cy + dy;
                     if (px >= 0 && px < 1000 && py >= 0 && py < 1000) {
-                        paintPixel(px, py, colorIdx);
+                        applyPixel(px, py, colorIdx, 'local-user');
+                        sendPixelWS(px, py, colorIdx);
                     }
                 }
             }
         }
 
-        function paintPixel(x, y, colorIdx) {
-            // Local optimistic paint
-            ctx.fillStyle = PALETTE[colorIdx];
-            ctx.fillRect(x, y, 1, 1);
-
-            // Send 5-byte Big-Endian packet to Go server
+        function sendPixelWS(x, y, colorIdx) {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 const buffer = new ArrayBuffer(5);
                 const view = new DataView(buffer);
@@ -414,34 +755,93 @@
             }
         }
 
-        // Mouse Events
-        viewport.onmousemove = (e) => {
-            const { x, y } = getCanvasCoords(e.clientX, e.clientY);
-            if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
-                coordsText.innerText = `X: ${x}, Y: ${y}`;
+        // Cooldown Ring Effect
+        let lastPaintTime = 0;
+        function triggerCooldown() {
+            const circle = document.getElementById('cooldown-circle');
+            const label = document.getElementById('cooldown-label');
+            circle.style.strokeDashoffset = '56';
+            label.innerText = '50ms';
+            label.style.color = '#f59e0b';
+            setTimeout(() => {
+                circle.style.strokeDashoffset = '0';
+                label.innerText = 'READY';
+                label.style.color = '#10b981';
+            }, 50);
+        }
+
+        // --- 6. Tooltip HUD Flotante (Inspector de Memoria) ---
+        document.addEventListener('mousemove', (e) => {
+            if (e.target.closest('#floating-dock, header, #telemetry-drawer, #minimap-card')) {
+                inspector.style.display = 'none';
+                return;
             }
+
+            const { x, y } = getCanvasCoords(e.clientX, e.clientY);
 
             if (isDragging) {
                 panX = e.clientX - startX;
                 panY = e.clientY - startY;
                 updateTransform();
-            } else if (isPainting) {
+                inspector.style.display = 'none';
+                return;
+            }
+
+            if (isPainting && !isEyedropper) {
                 if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
                     paintBrush(x, y, selectedColor);
                 }
             }
+
+            // Update Inspector HUD
+            if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+                inspector.style.display = 'block';
+                inspector.style.left = `${Math.min(e.clientX + 16, window.innerWidth - 280)}px`;
+                inspector.style.top = `${Math.min(e.clientY + 16, window.innerHeight - 120)}px`;
+
+                const chunk = Math.floor(y / 16);
+                const mutex = (y * 1000 + x) % 64;
+                const colorIdx = localCanvasState[y * 1000 + x];
+
+                const hexX = x.toString(16).padStart(4, '0').toUpperCase();
+                const hexY = y.toString(16).padStart(4, '0').toUpperCase();
+                const hexC = colorIdx.toString(16).padStart(2, '0').toUpperCase();
+                const rawDelta = `0x${hexX}${hexY}${hexC}`;
+
+                const meta = pixelAuthors.get(`${x},${y}`);
+                const authorTxt = meta ? `${meta.author} (hace ${((Date.now() - meta.time) / 1000).toFixed(1)}s)` : 'system-snapshot';
+
+                inspCoords.innerText = `[X: ${String(x).padStart(4, '0')}, Y: ${String(y).padStart(4, '0')}]`;
+                inspChunk.innerText = `#${chunk} (Lock Mutex ${mutex}/64)`;
+                inspAuthor.innerText = authorTxt;
+                inspPayload.innerText = rawDelta;
+            } else {
+                inspector.style.display = 'none';
+            }
+        };
+
+        viewport.onmouseleave = () => {
+            inspector.style.display = 'none';
+            isPainting = false;
+            isDragging = false;
         };
 
         viewport.onmousedown = (e) => {
-            if (e.button === 1 || e.shiftKey) { // Middle click or shift+drag for pan
+            if (e.button === 1 || e.shiftKey) { // Pan
                 isDragging = true;
                 startX = e.clientX - panX;
                 startY = e.clientY - panY;
-            } else if (e.button === 0) { // Left click = Paint
-                isPainting = true;
+            } else if (e.button === 0) {
                 const { x, y } = getCanvasCoords(e.clientX, e.clientY);
                 if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
-                    paintBrush(x, y, selectedColor);
+                    if (isEyedropper) {
+                        const picked = localCanvasState[y * 1000 + x];
+                        selectColor(picked);
+                        toggleEyedropper();
+                    } else {
+                        isPainting = true;
+                        paintBrush(x, y, selectedColor);
+                    }
                 }
             }
         };
@@ -466,7 +866,123 @@
             updateTransform();
         };
 
-        // 6. Interactive Bot Traffic Simulator
+        // --- 7. Minimapa Táctico con Heatmap en Vivo ---
+        function renderMinimap() {
+            miniCtx.fillStyle = '#06080d';
+            miniCtx.fillRect(0, 0, 150, 150);
+
+            // Draw Heatmap spots with thermal gradient
+            for (let hy = 0; hy < 50; hy++) {
+                for (let hx = 0; hx < 50; hx++) {
+                    const heat = heatGrid[hy * 50 + hx];
+                    if (heat > 0.04) {
+                        if (heat > 0.6) {
+                            miniCtx.fillStyle = `rgba(250, 204, 21, ${heat * 0.95})`; // Yellow core
+                        } else if (heat > 0.25) {
+                            miniCtx.fillStyle = `rgba(249, 115, 22, ${heat * 0.85})`; // Orange
+                        } else {
+                            miniCtx.fillStyle = `rgba(239, 68, 68, ${heat * 0.75})`; // Red
+                        }
+                        miniCtx.fillRect(hx * 3, hy * 3, 3, 3);
+                    }
+                }
+            }
+
+            // Draw Viewport Rect
+            const vx = Math.max(0, -panX / scale) * (150 / 1000);
+            const vy = Math.max(0, -panY / scale) * (150 / 1000);
+            const vw = (viewport.clientWidth / scale) * (150 / 1000);
+            const vh = (viewport.clientHeight / scale) * (150 / 1000);
+
+            miniCtx.strokeStyle = '#38bdf8';
+            miniCtx.lineWidth = 1.5;
+            miniCtx.strokeRect(vx, vy, vw, vh);
+            miniCtx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+            miniCtx.fillRect(vx, vy, vw, vh);
+        }
+
+        // Click / Drag on Minimap to Navigate
+        miniCanvas.addEventListener('mousedown', (e) => {
+            const rect = miniCanvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const targetX = (mx / 150) * 1000;
+            const targetY = (my / 150) * 1000;
+
+            panX = viewport.clientWidth / 2 - targetX * scale;
+            panY = viewport.clientHeight / 2 - targetY * scale;
+            updateTransform();
+        });
+
+        // Heatmap decay loop
+        setInterval(() => {
+            for (let i = 0; i < heatGrid.length; i++) {
+                if (heatGrid[i] > 0.01) heatGrid[i] *= 0.94;
+            }
+            renderMinimap();
+        }, 150);
+
+        // --- 8. Telemetry Drawer & Chart.js-like Rolling Canvas ---
+        let telemetryOpen = false;
+        function toggleTelemetry() {
+            telemetryOpen = !telemetryOpen;
+            const drawer = document.getElementById('telemetry-drawer');
+            const btn = document.getElementById('btn-toggle-telemetry');
+            if (telemetryOpen) {
+                drawer.classList.add('open');
+                btn.classList.add('active');
+            } else {
+                drawer.classList.remove('open');
+                btn.classList.remove('active');
+            }
+        }
+
+        const chartCanvas = document.getElementById('telemetry-chart');
+        const chartCtx = chartCanvas.getContext('2d');
+        const rateHistory = new Array(30).fill(0);
+
+        setInterval(() => {
+            rateHistory.shift();
+            rateHistory.push(deltasThisSecond);
+            document.getElementById('chart-rate-val').innerText = `${deltasThisSecond} d/s`;
+            deltasThisSecond = 0;
+
+            // Update Bandwidth Stats
+            const bytesBin = (totalDeltas * 5) + 1000000;
+            const bytesJson = (totalDeltas * 42) + 3500000;
+            const savings = ((1 - (bytesBin / bytesJson)) * 100).toFixed(1);
+
+            document.getElementById('stat-savings').innerText = `${savings}%`;
+            document.getElementById('stat-bytes-bin').innerText = `${(bytesBin / 1024).toFixed(0)} KB (Binario)`;
+            document.getElementById('stat-bytes-json').innerText = `${(bytesJson / 1024).toFixed(0)} KB (JSON)`;
+
+            // Render Rolling Chart
+            chartCtx.clearRect(0, 0, 280, 80);
+            chartCtx.fillStyle = '#07090e';
+            chartCtx.fillRect(0, 0, 280, 80);
+
+            const maxRate = Math.max(...rateHistory, 50);
+            chartCtx.beginPath();
+            chartCtx.moveTo(0, 80);
+
+            for (let i = 0; i < rateHistory.length; i++) {
+                const x = (i / (rateHistory.length - 1)) * 280;
+                const y = 80 - (rateHistory[i] / maxRate) * 70;
+                chartCtx.lineTo(x, y);
+            }
+
+            chartCtx.strokeStyle = '#10b981';
+            chartCtx.lineWidth = 2;
+            chartCtx.stroke();
+
+            // Area fill
+            chartCtx.lineTo(280, 80);
+            chartCtx.lineTo(0, 80);
+            chartCtx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+            chartCtx.fill();
+        }, 1000);
+
+        // --- 9. Interactive Bot Simulator ---
         let botInterval = null;
         function toggleBotTraffic() {
             const btn = document.getElementById('btn-bots');
@@ -481,14 +997,15 @@
                 let tick = 0;
                 botInterval = setInterval(() => {
                     tick++;
-                    // Spawn 10 simultaneous pixel writes across the canvas
-                    for (let i = 0; i < 10; i++) {
-                        const cx = Math.floor(400 + Math.sin(tick * 0.1 + i) * 150);
-                        const cy = Math.floor(500 + Math.cos(tick * 0.1 + i) * 150);
+                    for (let i = 0; i < 12; i++) {
+                        const botID = `bot-${(tick % 50) + 1}`;
+                        const cx = Math.floor(500 + Math.sin(tick * 0.12 + i) * 220);
+                        const cy = Math.floor(500 + Math.cos(tick * 0.12 + i) * 220);
                         const c = (tick + i) % PALETTE.length;
-                        paintPixel(cx, cy, c);
+                        applyPixel(cx, cy, c, botID);
+                        sendPixelWS(cx, cy, c);
                     }
-                }, 40);
+                }, 35);
             }
         }
     </script>
