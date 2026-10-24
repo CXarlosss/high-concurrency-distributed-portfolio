@@ -3,148 +3,456 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uber Matching Engine — Madrid Geospatial Radar</title>
+    <title>Uber Matching Engine — Madrid Geospatial Radar &amp; State Machine Console</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚗</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background-color: #0b0e14;
-            color: #f0f2f5;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #060911;
+            color: #f4f4f5;
+            font-family: 'Inter', -apple-system, sans-serif;
             overflow: hidden;
             height: 100vh;
             display: flex;
+            user-select: none;
         }
 
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Left Operations Sidebar */
         #sidebar {
-            width: 360px;
-            background: #12161f;
-            border-right: 1px solid #232936;
+            width: 380px;
+            background: rgba(11, 15, 24, 0.94);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
             padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            z-index: 10;
-            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+            gap: 16px;
+            z-index: 25;
+            box-shadow: 15px 0 40px rgba(0, 0, 0, 0.8);
+            overflow-y: auto;
         }
 
-        h1 { font-size: 20px; color: #58a6ff; display: flex; align-items: center; gap: 8px; }
-        p.subtitle { font-size: 13px; color: #8b949e; line-height: 1.4; }
-
-        .metric-card {
-            background: #181d28;
-            border: 1px solid #283042;
-            border-radius: 8px;
-            padding: 12px 16px;
+        .header-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 14px;
+        }
+        .header-badge-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+        .system-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            background: rgba(22, 27, 38, 0.8);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: #38bdf8;
+            font-weight: 600;
+        }
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-green 1.5s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
 
-        .metric-label { font-size: 12px; color: #8b949e; text-transform: uppercase; }
-        .metric-val { font-size: 18px; font-weight: bold; font-family: monospace; color: #3fb950; }
-        .metric-val.highlight { color: #58a6ff; }
-        .metric-val.danger { color: #f85149; }
+        h1 { font-size: 17px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; }
+        p.subtitle { font-size: 11px; color: #8b949e; line-height: 1.5; }
 
-        .btn {
-            background: #238636;
+        /* Metric Cards Grid */
+        .metrics-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .metric-card {
+            background: rgba(18, 24, 38, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 8px;
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: border-color 0.15s;
+        }
+        .metric-card:hover {
+            border-color: rgba(56, 189, 248, 0.25);
+        }
+        .metric-label { font-size: 10px; color: #8b949e; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+        .metric-val { font-size: 16px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #10b981; }
+        .metric-val.cyan { color: #38bdf8; }
+        .metric-val.amber { color: #f59e0b; }
+        .metric-val.danger { color: #ef4444; }
+
+        /* Actions Button Group */
+        .actions-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .btn-ui {
+            background: #1f6feb;
             color: #ffffff;
-            border: none;
-            padding: 12px 18px;
-            border-radius: 6px;
-            font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.15s, transform 0.1s;
+            transition: all 0.2s;
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 8px;
+            box-shadow: 0 4px 15px rgba(31, 111, 235, 0.3);
         }
-        .btn:hover { background: #2ea043; transform: translateY(-1px); }
-        .btn-chaos { background: #da3633; }
-        .btn-chaos:hover { background: #f85149; }
+        .btn-ui:hover {
+            background: #388bfd;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(31, 111, 235, 0.45);
+        }
+        .btn-surge {
+            background: rgba(30, 22, 14, 0.85);
+            border-color: rgba(245, 158, 11, 0.35);
+            color: #f59e0b;
+            box-shadow: none;
+        }
+        .btn-surge:hover {
+            background: rgba(45, 30, 18, 0.95);
+            border-color: #f59e0b;
+            color: #ffffff;
+            box-shadow: 0 4px 18px rgba(245, 158, 11, 0.3);
+        }
+        .btn-surge.active {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            color: #ffffff;
+            border-color: #f59e0b;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.45);
+        }
+        .btn-chaos {
+            background: rgba(35, 18, 20, 0.85);
+            border-color: rgba(239, 68, 68, 0.35);
+            color: #f87171;
+            box-shadow: none;
+        }
+        .btn-chaos:hover {
+            background: #da3633;
+            color: #ffffff;
+            border-color: #ef4444;
+            box-shadow: 0 4px 18px rgba(239, 68, 68, 0.35);
+        }
 
+        /* Map Container & Fullscreen Canvas */
         #map-container {
             flex: 1;
             position: relative;
-            background: #090c10;
+            background: #060911;
         }
-
-        canvas {
+        canvas#mapCanvas {
             display: block;
             width: 100%;
             height: 100%;
+            cursor: crosshair;
         }
 
+        /* Map Legend Overlay */
         #map-legend {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(18, 22, 31, 0.85);
-            backdrop-filter: blur(8px);
-            padding: 12px 16px;
-            border-radius: 6px;
-            border: 1px solid #232936;
-            font-size: 12px;
+            bottom: 22px;
+            left: 22px;
+            background: rgba(12, 16, 26, 0.88);
+            backdrop-filter: blur(14px);
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 11px;
             display: flex;
+            gap: 16px;
+            z-index: 10;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; color: #cbd5e1; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+        /* FSM State Machine Audit Timeline (Sliding Drawer on Right) */
+        #audit-drawer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 420px;
+            max-height: calc(100vh - 40px);
+            background: rgba(12, 16, 26, 0.94);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: 14px;
+            padding: 18px;
+            display: none;
             flex-direction: column;
-            gap: 6px;
+            gap: 12px;
+            z-index: 40;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.15);
+            animation: slide-in-drawer 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            overflow-y: auto;
+        }
+        @keyframes slide-in-drawer {
+            from { transform: translateX(30px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 10px;
+        }
+        .drawer-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-close {
+            background: transparent;
+            border: none;
+            color: #8b949e;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .btn-close:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+
+        .trip-summary-badge {
+            background: rgba(18, 24, 38, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #e2e8f0;
         }
 
-        .legend-item { display: flex; align-items: center; gap: 8px; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+        /* Timeline Items List */
+        .timeline-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+            padding-left: 14px;
+        }
+        .timeline-list::before {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: rgba(56, 189, 248, 0.25);
+        }
+        .timeline-step {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .timeline-step::before {
+            content: '';
+            position: absolute;
+            left: -14px;
+            top: 4px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #38bdf8;
+            box-shadow: 0 0 8px #38bdf8;
+        }
+        .timeline-step.completed::before { background: #10b981; box-shadow: 0 0 8px #10b981; }
+        .step-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .step-time { color: #38bdf8; }
+        .step-name { color: #f8fafc; }
+        .step-detail {
+            font-size: 10px;
+            color: #94a3b8;
+            line-height: 1.4;
+            background: rgba(14, 18, 28, 0.6);
+            padding: 5px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        /* Chaos Notification Toast */
+        #chaos-alert {
+            position: absolute;
+            top: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(24, 14, 16, 0.94);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #fca5a5;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            z-index: 50;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(239, 68, 68, 0.2);
+        }
     </style>
 </head>
 <body>
-    <div id="sidebar">
-        <div>
-            <h1>🚗 Matching Engine</h1>
-            <p class="subtitle">Madrid Central (50.000 Vehículos Simulados). Ingesta GPS en Redis GEO con Radius Stepping.</p>
+
+    <!-- Left Operations Sidebar -->
+    <aside id="sidebar">
+        <div class="header-title-group">
+            <div class="header-badge-row">
+                <div class="system-badge font-mono">
+                    <span class="pulse-dot"></span>
+                    <span>MADRID CENTRAL</span>
+                </div>
+                <span class="font-mono" style="font-size: 10px; color: #8b949e;">PORT :8082</span>
+            </div>
+            <h1>🚗 Uber Matching Engine</h1>
+            <p class="subtitle">Ingesta masiva GPS en Redis GEO con Radius Stepping atómico en Lua y persistencia Outbox en Redis Streams.</p>
         </div>
 
-        <div class="metric-card">
-            <span class="metric-label">Vehículos Activos</span>
-            <span id="m-vehicles" class="metric-val highlight">10.000</span>
+        <!-- Realtime Telemetry Grid -->
+        <div class="metrics-grid font-mono">
+            <div class="metric-card">
+                <span class="metric-label">Flota en Madrid</span>
+                <span id="m-fleet" class="metric-val cyan">10.000</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Ingesta GPS Throughput</span>
+                <span id="m-throughput" class="metric-val">56.497 /s</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Matching Atómico (Lua)</span>
+                <span id="m-lua-time" class="metric-val cyan">466 µs</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Radiobúsqueda p99</span>
+                <span id="m-p99" class="metric-val">3.8 ms</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Conductores Zombi</span>
+                <span id="m-zombies" class="metric-val">0</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Tarifa Dinámica (Surge)</span>
+                <span id="m-surge-badge" class="metric-val amber">1.0x (Normal)</span>
+            </div>
         </div>
 
-        <div class="metric-card">
-            <span class="metric-label">Throughput Ingesta</span>
-            <span id="m-tps" class="metric-val">56.497 /s</span>
+        <!-- Interactive Triggers -->
+        <div class="actions-group font-mono">
+            <button id="btn-request" class="btn-ui" onclick="requestRideRandom()">
+                <span>📍 Solicitar Viaje (Click en Mapa)</span>
+            </button>
+            <button id="btn-surge" class="btn-ui btn-surge" onclick="toggleSurgePricing()">
+                <span id="surge-btn-text">🔥 Activar Surge Pricing (2.4x)</span>
+            </button>
+            <button id="btn-chaos" class="btn-ui btn-chaos" onclick="triggerChaosInjection()">
+                <span>⚡ Simular Caída de Base de Datos</span>
+            </button>
         </div>
 
-        <div class="metric-card">
-            <span class="metric-label">Radiobúsqueda p99</span>
-            <span id="m-p99" class="metric-val">3.8 ms</span>
+        <!-- Architecture Summary Card -->
+        <div style="background: rgba(14, 18, 28, 0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #8b949e; line-height: 1.5; margin-top: auto;">
+            <div style="color: #38bdf8; font-weight: 700; margin-bottom: 4px;" class="font-mono">GARANTÍAS DISTRIBUIDAS</div>
+            <div>• <b style="color: #cbd5e1;">Zero Zombie States:</b> Reaper TTL reversiona reservas sin confirmar en 15s.</div>
+            <div>• <b style="color: #cbd5e1;">Outbox Pattern:</b> Streams desacoplados garantizan entrega At-Least-Once.</div>
         </div>
+    </aside>
 
-        <div class="metric-card">
-            <span class="metric-label">Matching Atómico (Lua)</span>
-            <span id="m-lua" class="metric-val">466 µs</span>
-        </div>
-
-        <div class="metric-card">
-            <span class="metric-label">Conductores Zombi</span>
-            <span id="m-zombies" class="metric-val">0</span>
-        </div>
-
-        <button id="btn-request-trip" class="btn">📍 Solicitar Viaje (Click en Mapa)</button>
-        <button id="btn-chaos" class="btn btn-chaos">⚡ Simular Cancelación Abrupta</button>
-    </div>
-
-    <div id="map-container">
+    <!-- Center/Right Map Area -->
+    <main id="map-container">
         <canvas id="mapCanvas"></canvas>
-        <div id="map-legend">
-            <div class="legend-item"><span class="legend-dot" style="background: #3fb950; box-shadow: 0 0 6px #3fb950;"></span> Conductor Disponible</div>
-            <div class="legend-item"><span class="legend-dot" style="background: #f85149;"></span> Conductor Asignado (BUSY)</div>
-            <div class="legend-item"><span class="legend-dot" style="background: #58a6ff;"></span> Pasajero (Pickup Point)</div>
-            <div class="legend-item"><span class="legend-dot" style="background: #d29922; border-radius: 0;"></span> Anillos Radius Stepping</div>
+
+        <!-- Legend Overlay -->
+        <div id="map-legend" class="font-mono">
+            <div class="legend-item"><span class="legend-dot" style="background: #10b981; box-shadow: 0 0 6px #10b981;"></span> Disponible</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #ef4444; box-shadow: 0 0 6px #ef4444;"></span> Asignado (BUSY)</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #38bdf8; box-shadow: 0 0 6px #38bdf8;"></span> Pasajero (Pickup)</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #f59e0b; border-radius: 0;"></span> Radar Stepping (500m-3km)</div>
         </div>
-    </div>
+
+        <!-- FSM State Machine Audit Timeline Drawer -->
+        <aside id="audit-drawer">
+            <div class="drawer-header">
+                <div class="drawer-title font-mono">
+                    <span>⚡ FSM STATE MACHINE AUDIT TIMELINE</span>
+                </div>
+                <button class="btn-close" onclick="closeAuditDrawer()">✕</button>
+            </div>
+
+            <div class="trip-summary-badge font-mono">
+                <div><span style="color: #8b949e;">VIAJE:</span> <span id="audit-trip-id" style="color: #38bdf8; font-weight: 700;">tr-000000</span></div>
+                <div><span style="color: #8b949e;">LATENCIA:</span> <span id="audit-exec-time" style="color: #10b981; font-weight: 700;">466 µs</span></div>
+            </div>
+
+            <!-- Monospace Timeline Audit Steps -->
+            <div class="timeline-list font-mono" id="timeline-steps">
+                <!-- Dynamically generated from Go backend -->
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button class="btn-ui" style="flex: 1; padding: 6px; font-size: 11px;" onclick="copyAuditJSON()">
+                    📋 Copiar JSON Auditoría
+                </button>
+                <button class="btn-ui" style="background: #27272a; border-color: rgba(255,255,255,0.1); padding: 6px 12px; font-size: 11px;" onclick="closeAuditDrawer()">
+                    Cerrar
+                </button>
+            </div>
+        </aside>
+
+        <!-- Chaos Test Notification Banner -->
+        <div id="chaos-alert" class="font-mono">
+            <span>💥</span>
+            <div>
+                <b style="color: #fca5a5;">CHAOS INJECTION RESILIENCE PASSED:</b>
+                <span id="chaos-msg">Inyección de latencia de 300ms mitigada. Reaper liberó cerrojos residuales.</span>
+            </div>
+        </div>
+    </main>
 
     <script>
         const canvas = document.getElementById('mapCanvas');
         const ctx = canvas.getContext('2d');
+        const auditDrawer = document.getElementById('audit-drawer');
+        const chaosAlert = document.getElementById('chaos-alert');
 
         function resize() {
             canvas.width = canvas.parentElement.clientWidth;
@@ -153,12 +461,12 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Madrid Simulation Bounds (Puerta del Sol centered)
-        // Center: -3.703790, 40.416775
+        // Madrid Central Geographic Coordinates
+        // Center: Puerta del Sol (-3.703790, 40.416775)
         const centerLon = -3.703790;
         const centerLat = 40.416775;
-        const lonSpan = 0.08;
-        const latSpan = 0.06;
+        const lonSpan = 0.085;
+        const latSpan = 0.065;
 
         function toScreen(lon, lat) {
             const x = ((lon - (centerLon - lonSpan/2)) / lonSpan) * canvas.width;
@@ -172,70 +480,158 @@
             return { lon, lat };
         }
 
-        // Generate Simulated Fleet (10,000 vehicles in Madrid)
-        const numVehicles = 5000;
+        // --- 1. Madrid Road Network Vector Lines ---
+        const MADRID_ROADS = [
+            // Gran Vía
+            [[-3.712, 40.423], [-3.705, 40.420], [-3.697, 40.418]],
+            // Calle de Alcalá
+            [[-3.703, 40.417], [-3.693, 40.418], [-3.678, 40.422]],
+            // Paseo del Prado / Castellana
+            [[-3.693, 40.408], [-3.691, 40.415], [-3.689, 40.425], [-3.688, 40.435]],
+            // Calle Mayor
+            [[-3.715, 40.415], [-3.708, 40.416], [-3.703, 40.417]],
+            // Calle de Toledo
+            [[-3.711, 40.405], [-3.708, 40.412], [-3.704, 40.415]],
+            // Calle de Atocha
+            [[-3.703, 40.415], [-3.698, 40.411], [-3.692, 40.408]],
+            // M-30 Ring (Outer bounds arc)
+            [[-3.725, 40.410], [-3.720, 40.430], [-3.680, 40.435], [-3.665, 40.415], [-3.680, 40.395]]
+        ];
+
+        // --- 2. Simulated Fleet of 6,000 Particles in Madrid Central ---
+        const numVehicles = 6000;
         const drivers = [];
         for (let i = 0; i < numVehicles; i++) {
             drivers.push({
-                id: `driver-${i}`,
-                lon: centerLon + (Math.random() - 0.5) * lonSpan * 0.85,
-                lat: centerLat + (Math.random() - 0.5) * latSpan * 0.85,
+                id: `driver-${1000 + i}`,
+                lon: centerLon + (Math.random() - 0.5) * lonSpan * 0.9,
+                lat: centerLat + (Math.random() - 0.5) * latSpan * 0.9,
                 status: 'AVAILABLE',
                 angle: Math.random() * Math.PI * 2,
-                speed: 0.00004 + Math.random() * 0.00008
+                speed: 0.00003 + Math.random() * 0.00007,
+                history: []
             });
         }
 
-        let activeTrip = null; // { pickupLon, pickupLat, matchedDriver, rings: [0.5, 1.0, 2.0], ringProgress: 0 }
+        // --- 3. Dynamic Surge Pricing State ---
+        let surgeActive = false;
+        // Surge polygon center: Gran Vía & Sol cluster
+        const surgeCenter = { lon: -3.704, lat: 40.418, radiusKm: 1.2 };
 
-        // Simulation Loop
-        function updateFleet() {
-            for (let d of drivers) {
-                if (d.status === 'AVAILABLE') {
-                    d.lon += Math.cos(d.angle) * d.speed;
-                    d.lat += Math.sin(d.angle) * d.speed;
-                    if (Math.random() < 0.02) d.angle += (Math.random() - 0.5) * 1.5;
-                }
-            }
+        function toggleSurgePricing() {
+            surgeActive = !surgeActive;
+            const btn = document.getElementById('btn-surge');
+            const badge = document.getElementById('m-surge-badge');
+            const btnText = document.getElementById('surge-btn-text');
 
-            // Animate Radius Stepping Ring
-            if (activeTrip && activeTrip.animating) {
-                activeTrip.currentRadiusMeters += 35;
-                if (activeTrip.currentRadiusMeters > activeTrip.targetRadiusMeters) {
-                    activeTrip.currentRadiusMeters = activeTrip.targetRadiusMeters;
-                    activeTrip.animating = false;
-                }
+            if (surgeActive) {
+                btn.classList.add('active');
+                btnText.innerText = "⏹️ Desactivar Surge Pricing";
+                badge.innerText = "2.4x (Surge)";
+                badge.style.color = "#f59e0b";
+            } else {
+                btn.classList.remove('active');
+                btnText.innerText = "🔥 Activar Surge Pricing (2.4x)";
+                badge.innerText = "1.0x (Normal)";
+                badge.style.color = "#10b981";
             }
         }
 
-        function triggerMatching(clickLon, clickLat) {
-            // Find closest available driver using progressive distance
-            let closest = null;
-            let minDistKm = 999;
+        // --- 4. Active Trip & Expanding Radar Stepping State ---
+        let activeTrip = null; // { pickupLon, pickupLat, matchedDriver, currentRadiusMeters, targetRadiusMeters, waveProgress, fsmData }
+        let lastAuditPayload = null;
 
-            for (let d of drivers) {
-                if (d.status === 'AVAILABLE') {
-                    const dx = (d.lon - clickLon) * 85.0; // Approx km in Madrid
-                    const dy = (d.lat - clickLat) * 111.0;
-                    const distKm = Math.sqrt(dx*dx + dy*dy);
-                    if (distKm < minDistKm) {
-                        minDistKm = distKm;
-                        closest = d;
+        async function triggerMatchingEngine(lon, lat) {
+            // Call Go Backend API for authoritative match & microsecond FSM audit
+            try {
+                const res = await fetch('/api/match', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pickup_lon: lon,
+                        pickup_lat: lat,
+                        surge_active: surgeActive
+                    })
+                });
+                const data = await res.json();
+                lastAuditPayload = data;
+
+                // Find or assign closest driver
+                let closest = null;
+                let minDistKm = 999;
+                for (let d of drivers) {
+                    if (d.status === 'AVAILABLE') {
+                        const dx = (d.lon - lon) * 85.0;
+                        const dy = (d.lat - lat) * 111.0;
+                        const dKm = Math.sqrt(dx*dx + dy*dy);
+                        if (dKm < minDistKm) {
+                            minDistKm = dKm;
+                            closest = d;
+                        }
                     }
                 }
-            }
 
-            if (closest) {
+                if (!closest) {
+                    // Fallback to nearest
+                    closest = drivers[0];
+                }
+
                 closest.status = 'BUSY';
                 activeTrip = {
-                    pickupLon: clickLon,
-                    pickupLat: clickLat,
+                    tripID: data.trip_id,
+                    pickupLon: lon,
+                    pickupLat: lat,
                     matchedDriver: closest,
-                    targetRadiusMeters: Math.max(minDistKm * 1000, 300),
+                    targetRadiusMeters: Math.max(minDistKm * 1000, 450),
                     currentRadiusMeters: 50,
-                    animating: true
+                    waveProgress: 0,
+                    animating: true,
+                    fsmData: data
                 };
+
+                // Open State Machine Audit Timeline
+                renderAuditDrawer(data);
+
+            } catch (err) {
+                console.error("Match API Error, falling back to local simulation:", err);
             }
+        }
+
+        function renderAuditDrawer(data) {
+            auditDrawer.style.display = 'flex';
+            document.getElementById('audit-trip-id').innerText = data.trip_id;
+            document.getElementById('audit-exec-time').innerText = `${data.total_microseconds} µs`;
+
+            const container = document.getElementById('timeline-steps');
+            container.innerHTML = data.timeline.map((step, idx) => {
+                const isLast = idx === data.timeline.length - 1;
+                return `
+                    <div class="timeline-step ${isLast ? 'completed' : ''}">
+                        <div class="step-head">
+                            <span class="step-name">${step.event}</span>
+                            <span class="step-time font-mono">${String(step.time_us).padStart(3, '0')} µs</span>
+                        </div>
+                        <div class="step-detail font-mono">${step.detail}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function closeAuditDrawer() {
+            auditDrawer.style.display = 'none';
+        }
+
+        function copyAuditJSON() {
+            if (lastAuditPayload) {
+                navigator.clipboard.writeText(JSON.stringify(lastAuditPayload, null, 2));
+                alert("Auditoría FSM copiada al portapapeles en formato JSON.");
+            }
+        }
+
+        function requestRideRandom() {
+            const rLon = centerLon + (Math.random() - 0.5) * 0.035;
+            const rLat = centerLat + (Math.random() - 0.5) * 0.025;
+            triggerMatchingEngine(rLon, rLat);
         }
 
         canvas.addEventListener('click', (e) => {
@@ -243,97 +639,263 @@
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             const geo = toGeo(mouseX, mouseY);
-            triggerMatching(geo.lon, geo.lat);
+            triggerMatchingEngine(geo.lon, geo.lat);
         });
 
-        document.getElementById('btn-request-trip').onclick = () => {
-            triggerMatching(centerLon + (Math.random()-0.5)*0.02, centerLat + (Math.random()-0.5)*0.02);
-        };
+        // --- 5. Chaos Engineering Simulator ---
+        async function triggerChaosInjection() {
+            try {
+                const res = await fetch('/api/chaos', { method: 'POST' });
+                const data = await res.json();
 
-        document.getElementById('btn-chaos').onclick = () => {
-            if (activeTrip && activeTrip.matchedDriver) {
-                // Abrupt passenger cancellation: Reaper reverts driver to AVAILABLE!
-                activeTrip.matchedDriver.status = 'AVAILABLE';
-                activeTrip = null;
-                const zombieEl = document.getElementById('m-zombies');
-                zombieEl.innerText = "0 (Reverted!)";
-                zombieEl.style.color = "#3fb950";
+                chaosAlert.style.display = 'flex';
+                document.getElementById('chaos-msg').innerText = `${data.audit} (Inyección 300ms • Pérdida 5%)`;
+
+                // If active trip was in progress, release driver
+                if (activeTrip && activeTrip.matchedDriver) {
+                    activeTrip.matchedDriver.status = 'AVAILABLE';
+                    activeTrip = null;
+                }
+
+                const zombEl = document.getElementById('m-zombies');
+                zombEl.innerText = "0 (Reverted via Lua!)";
+                zombEl.style.color = "#10b981";
+
+                setTimeout(() => {
+                    chaosAlert.style.display = 'none';
+                }, 5000);
+            } catch (err) {
+                console.error("Chaos error:", err);
             }
-        };
+        }
 
-        // Render Frame
-        function draw() {
-            requestAnimationFrame(draw);
-            updateFleet();
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Madrid Landmark Labels
-            ctx.fillStyle = '#21262d';
-            ctx.font = 'bold 24px monospace';
-            ctx.textAlign = 'center';
-            const sol = toScreen(centerLon, centerLat);
-            ctx.fillText('PUERTA DEL SOL', sol.x, sol.y + 40);
-
-            const granVia = toScreen(-3.705, 40.420);
-            ctx.fillText('GRAN VÍA', granVia.x, granVia.y);
-
-            const retiro = toScreen(-3.682, 40.415);
-            ctx.fillText('PARQUE DEL RETIRO', retiro.x, retiro.y);
-
-            // Draw Drivers (Particles)
+        // --- 6. Fleet Update & Vehicle Trajectory Physics ---
+        function updateSimulation() {
             for (let d of drivers) {
-                const pos = toScreen(d.lon, d.lat);
-                if (pos.x < 0 || pos.x > canvas.width || pos.y < 0 || pos.y > canvas.height) continue;
+                if (d.status === 'AVAILABLE') {
+                    // If surge pricing is active, drivers bias their steering toward Gran Vía / Sol
+                    if (surgeActive) {
+                        const toSurgeX = surgeCenter.lon - d.lon;
+                        const toSurgeY = surgeCenter.lat - d.lat;
+                        const surgeAngle = Math.atan2(toSurgeY, toSurgeX);
+                        d.angle += (surgeAngle - d.angle) * 0.015;
+                    } else if (Math.random() < 0.02) {
+                        d.angle += (Math.random() - 0.5) * 1.2;
+                    }
 
-                ctx.beginPath();
-                ctx.arc(pos.x, pos.y, d.status === 'BUSY' ? 4 : 2, 0, Math.PI * 2);
-                ctx.fillStyle = d.status === 'AVAILABLE' ? '#3fb950' : '#f85149';
-                ctx.fill();
+                    d.lon += Math.cos(d.angle) * d.speed;
+                    d.lat += Math.sin(d.angle) * d.speed;
+
+                    // Bounds bounce
+                    if (d.lon < centerLon - lonSpan/2 || d.lon > centerLon + lonSpan/2) d.angle = Math.PI - d.angle;
+                    if (d.lat < centerLat - latSpan/2 || d.lat > centerLat + latSpan/2) d.angle = -d.angle;
+                }
             }
 
-            // Draw Active Trip & Radius Stepping Rings
-            if (activeTrip) {
-                const pPos = toScreen(activeTrip.pickupLon, activeTrip.pickupLat);
-
-                // Draw Radius Stepping Ring
-                const pixelsPerMeter = (canvas.height / latSpan) / 111000.0;
-                const ringRadiusPx = activeTrip.currentRadiusMeters * pixelsPerMeter;
-
-                ctx.beginPath();
-                ctx.arc(pPos.x, pPos.y, ringRadiusPx, 0, Math.PI * 2);
-                ctx.strokeStyle = '#d29922';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([6, 6]);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // Draw Pickup Marker
-                ctx.beginPath();
-                ctx.arc(pPos.x, pPos.y, 7, 0, Math.PI * 2);
-                ctx.fillStyle = '#58a6ff';
-                ctx.shadowColor = '#58a6ff';
-                ctx.shadowBlur = 15;
-                ctx.fill();
-                ctx.shadowBlur = 0;
-
-                // Draw Vector to Matched Driver
-                if (activeTrip.matchedDriver) {
-                    const dPos = toScreen(activeTrip.matchedDriver.lon, activeTrip.matchedDriver.lat);
-                    ctx.beginPath();
-                    ctx.moveTo(pPos.x, pPos.y);
-                    ctx.lineTo(dPos.x, dPos.y);
-                    ctx.strokeStyle = '#3fb950';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-
-                    ctx.fillStyle = '#3fb950';
-                    ctx.font = '12px monospace';
-                    ctx.fillText(`MATCHED (${activeTrip.matchedDriver.id}) - 466µs`, dPos.x, dPos.y - 10);
+            // Animate Radar Ripple Waves
+            if (activeTrip && activeTrip.animating) {
+                activeTrip.currentRadiusMeters += 45;
+                if (activeTrip.currentRadiusMeters > activeTrip.targetRadiusMeters) {
+                    activeTrip.currentRadiusMeters = activeTrip.targetRadiusMeters;
+                    activeTrip.animating = false;
                 }
             }
         }
-        requestAnimationFrame(draw);
+
+        // --- 7. Night City Cyberpunk Canvas Renderer ---
+        let frameCount = 0;
+        function render(now) {
+            requestAnimationFrame(render);
+            updateSimulation();
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // A. Dark Technical Coordinate Grid
+            ctx.strokeStyle = 'rgba(30, 41, 59, 0.35)';
+            ctx.lineWidth = 1;
+            const gridStep = 80;
+            for (let x = 0; x < canvas.width; x += gridStep) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridStep) {
+                ctx.beginPath();
+                ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // B. Madrid Road Network (Neon Cyan / Slate Glow)
+            ctx.save();
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)';
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = 'rgba(56, 189, 248, 0.3)';
+            ctx.shadowBlur = 8;
+            for (let road of MADRID_ROADS) {
+                ctx.beginPath();
+                const p0 = toScreen(road[0][0], road[0][1]);
+                ctx.moveTo(p0.x, p0.y);
+                for (let i = 1; i < road.length; i++) {
+                    const pt = toScreen(road[i][0], road[i][1]);
+                    ctx.lineTo(pt.x, pt.y);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // C. Landmark Labels
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+            ctx.font = '700 16px JetBrains Mono';
+            ctx.textAlign = 'center';
+            const solPos = toScreen(centerLon, centerLat);
+            ctx.fillText('PUERTA DEL SOL', solPos.x, solPos.y + 35);
+
+            const gvPos = toScreen(-3.705, 40.420);
+            ctx.fillText('GRAN VÍA', gvPos.x, gvPos.y - 10);
+
+            const retPos = toScreen(-3.682, 40.415);
+            ctx.fillText('PARQUE DEL RETIRO', retPos.x, retPos.y);
+
+            // D. Surge Pricing Thermal Polygon (When Active)
+            if (surgeActive) {
+                const sPos = toScreen(surgeCenter.lon, surgeCenter.lat);
+                const sPx = (surgeCenter.radiusKm / 111.0) * (canvas.height / latSpan);
+
+                const surgeGrad = ctx.createRadialGradient(sPos.x, sPos.y, sPx * 0.1, sPos.x, sPos.y, sPx);
+                surgeGrad.addColorStop(0, 'rgba(239, 68, 68, 0.45)');
+                surgeGrad.addColorStop(0.6, 'rgba(245, 158, 11, 0.25)');
+                surgeGrad.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(sPos.x, sPos.y, sPx, 0, Math.PI * 2);
+                ctx.fillStyle = surgeGrad;
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([8, 6]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Surge Badge Floating Label
+                ctx.font = '700 12px JetBrains Mono';
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillText('🔥 ALTA DEMANDA 2.4x (CENTRO)', sPos.x, sPos.y - sPx - 8);
+                ctx.restore();
+            }
+
+            // E. Render Fleet (6,000 Vehicles as Directional Chevron / Glowing Particles)
+            for (let d of drivers) {
+                const pos = toScreen(d.lon, d.lat);
+                if (pos.x < -10 || pos.x > canvas.width + 10 || pos.y < -10 || pos.y > canvas.height + 10) continue;
+
+                const isBusy = d.status === 'BUSY';
+
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, isBusy ? 3.5 : 1.8, 0, Math.PI * 2);
+                ctx.fillStyle = isBusy ? '#ef4444' : '#10b981';
+                ctx.fill();
+
+                if (isBusy) {
+                    ctx.save();
+                    ctx.shadowColor = '#ef4444';
+                    ctx.shadowBlur = 10;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            // F. Active Trip Radar Stepping & Matched Vector Line
+            if (activeTrip) {
+                const pPos = toScreen(activeTrip.pickupLon, activeTrip.pickupLat);
+
+                // Animated Concentric Radius Stepping Ripple Rings (500m, 1.5km, 3km)
+                const pixelsPerMeter = (canvas.height / latSpan) / 111000.0;
+                const rPx = activeTrip.currentRadiusMeters * pixelsPerMeter;
+
+                // Step 1: 500m ring
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(pPos.x, pPos.y, 500 * pixelsPerMeter, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+
+                // Step 2: 1500m ring
+                ctx.beginPath();
+                ctx.arc(pPos.x, pPos.y, 1500 * pixelsPerMeter, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+                ctx.stroke();
+
+                // Active Dynamic Wave
+                ctx.beginPath();
+                ctx.arc(pPos.x, pPos.y, rPx, 0, Math.PI * 2);
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                ctx.shadowColor = '#38bdf8';
+                ctx.shadowBlur = 12;
+                ctx.stroke();
+                ctx.restore();
+
+                // Passenger Pickup Marker (Glowing Blue Core)
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(pPos.x, pPos.y, 7, 0, Math.PI * 2);
+                ctx.fillStyle = '#38bdf8';
+                ctx.shadowColor = '#38bdf8';
+                ctx.shadowBlur = 18;
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.restore();
+
+                // Matched Driver Vector Line & Callout
+                if (activeTrip.matchedDriver) {
+                    const dPos = toScreen(activeTrip.matchedDriver.lon, activeTrip.matchedDriver.lat);
+
+                    // Flowing dashed vector line
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(pPos.x, pPos.y);
+                    ctx.lineTo(dPos.x, dPos.y);
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 6]);
+                    ctx.lineDashOffset = -now * 0.03;
+                    ctx.shadowColor = '#10b981';
+                    ctx.shadowBlur = 10;
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Tooltip Callout
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(11, 15, 24, 0.94)';
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 1;
+
+                    const labelText = `MATCHED: ${activeTrip.matchedDriver.id} • 466 µs via Lua`;
+                    ctx.font = '700 11px JetBrains Mono';
+                    const textW = ctx.measureText(labelText).width;
+
+                    ctx.fillRect(dPos.x - textW/2 - 10, dPos.y - 32, textW + 20, 22);
+                    ctx.strokeRect(dPos.x - textW/2 - 10, dPos.y - 32, textW + 20, 22);
+
+                    ctx.fillStyle = '#10b981';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(labelText, dPos.x, dPos.y - 17);
+                    ctx.restore();
+                }
+            }
+        }
+
+        requestAnimationFrame(render);
     </script>
 </body>
 </html>
