@@ -49,27 +49,27 @@ Cada proyecto aborda un dominio computacional complejo, implementado desde el me
 
 ---
 
-## 📝 12 Bullets de Impacto para tu CV (Fórmula Google XYZ)
+## 📝 Balas de Impacto Técnico para el CV (Directas y Sin Humo)
 
-Copia y pega estos bullets directamente en tu currículum según el rol al que apliques:
+Formato técnico enfocado en: **Problema de ingeniería $\to$ Decisión técnica $\to$ Métrica verificada**.
 
-### 🎨 Proyecto 1: Pixel War (Concurrencia Masiva & WebSockets)
-1. *Diseñó e implementó un motor de lienzo colaborativo en tiempo real en Go capaz de sostener **5.000 conexiones WebSocket concurrentes** y procesar **>97.000 deltas de píxel** con una latencia de conexión **p95 de 1.38 ms**, utilizando un mecanismo de cerrojos fraccionados (*64-stripe locking*) y difusión no bloqueante.*
-2. *Redujo el consumo de memoria del lienzo de 1.000.000 de píxeles en un **75%** (**976.5 KB en RAM** frente a 4 MB tradicionales) alcanzando **0 alocaciones en el heap** en la ruta crítica de escritura, mediante un buffer contiguo indexado de 8 bits y serialización binaria sin reflexión.*
-3. *Disminuí el tráfico de red en un **87.5%** frente a arquitecturas JSON tradicionales, diseñando un protocolo binario propietario de **5 bytes por delta** (`[X:2B][Y:2B][Color:1B]`) en Big-Endian con agregación por lotes (*write-batching*) en el pipeline del socket.*
-4. *Eliminé cuellos de botella por clientes lentos (*slow consumers*) y riesgos de bloqueo en cadena (*head-of-line blocking*), implementando un Broadcast Hub con desalojo adaptativo de sockets saturados y validando la estabilidad con suites de pruebas destructivas en **k6**.*
+### 🎨 Pixel War
+- **Protocolo de red binario:** Reducción del ancho de banda en un **87% frente a JSON** mediante un protocolo binario plano de 5 bytes por delta (`uint16 x, uint16 y, uint8 color`) sobre WebSockets.
+- **Estado en memoria y concurrencia:** Reducción de la contención de escritura en el lienzo de 1M de píxeles mediante un array continuo de memoria protegido por **64 `sync.RWMutex` particionados por coordenadas**.
+- **Control de saturación (Backpressure):** Implementación de canales bufferizados con descarte adaptativo para evitar que clientes lentos (*slow consumers*) bloqueen la goroutine de broadcast general.
+- **Validación bajo carga:** Simulación de **5.000 clientes concurrentes en k6** con p95 de latencia de entrega en **1.38 ms** y una huella de memoria inferior a **110 MB** en Go.
 
-### 🕹️ Proyecto 2: Arena .io (Game Engines, Netcode & Low-Latency)
-5. *Desarrolló un motor de juego multijugador autoritativo en Go capaz de orquestar salas de **500 jugadores concurrentes a 30 TPS estables**, procesando más de **$22.000\text{ inputs/seg}$** con una latencia de cálculo de tick **p99 $< 2.5\text{ ms}$** (consumiendo menos del 8% del presupuesto de frame).*
-6. *Redujo el tiempo de procesamiento de colisiones y difusión de red en un **96.6%** (de **$1.85\text{ ms}$ a $62\ \mu\text{s}$ por tick**), diseñando un sistema de particionado espacial **Spatial Hash Grid 2D de 400 celdas contiguas** con gestión de Área de Interés (AoI) y **$0\text{ alocaciones en el heap}$**.*
-7. *Neutralicé el **100% de ataques de teletransporte y speed-hacking** (>31.000 intentos mitigados bajo pruebas de estrés), implementando un modelo autoritativo estricto con **Buffers Circulares de 32 ranuras (`RingBuffer`) indexados a nivel de bits** y truncamiento vectorial de desplazamiento.*
-8. *Disminuí el tráfico de red en un **69.4%** respecto a estándares JSON y erradiqué pausas del Garbage Collector, diseñando un protocolo binario propietario de **18 bytes por entidad** en LittleEndian y reciclaje de buffers mediante **`sync.Pool`**, manteniendo la huella de memoria en **$<10\text{ MB}$ de RAM**.*
+### 🕹️ Arena .io
+- **Optimización de colisiones ($O(N^2) \to O(1)$):** Reducción del tiempo de cálculo de tick de $1.85\text{ ms}$ a **$62\ \mu\text{s}$** mediante un **Spatial Hash Grid 2D** que limita las comprobaciones a las 9 celdas adyacentes.
+- **Bucle a cero asignaciones:** Erradicación de pausas de Garbage Collection a 30 TPS mediante pooling de buffers con **`sync.Pool`**, manteniendo el consumo total de RAM por debajo de **10 MB para 500 bots**.
+- **Autoridad del servidor y anti-cheat:** Validación vectorial de desplazamiento y cola de inputs con **Ring Buffer (`seq & 31`)** en el servidor para neutralizar alteraciones de velocidad y paquetes fuera de orden.
+- **Sincronización cliente-servidor:** Protocolo binario de **18 bytes por entidad** con reconciliación de inputs y predicción local en canvas para tolerar pings de hasta 120 ms sin desincronización visible.
 
-### 🚗 Proyecto 3: Uber Matching Engine (Sistemas Distribuidos & Event-Sourcing)
-9. *Diseñó un motor de matching geoespacial capaz de procesar **2.000 solicitudes/min** para un ecosistema de **50.000 vehículos transmitiendo GPS cada 3 segundos**, reduciendo la latencia de asignación atómica a **$466\ \mu\text{s}$** mediante scripts Redis Lua precompilados (`EVALSHA`).*
-10. *Optimizó las búsquedas de proximidad ($O(N \log N)$) implementando un algoritmo de **Radius Stepping concéntrico (500m $\to$ 5km)** sobre Redis GEO, fijando la latencia de radiobúsqueda **p99 en $3.8\text{ ms}$** bajo máxima densidad urbana.*
-11. *Erradicó la doble asignación de viajes y los estados zombi implementando una máquina de estados determinista y un **worker Reaper asíncrono de purga con TTLs transaccionales de 15 segundos**, logrando cero inconsistencias ante cancelaciones concurrentes.*
-12. *Garantizó consistencia eventual y **cero pérdida de transacciones** ante caídas abruptas de la base de datos relacional, implementando el patrón **Transactional Outbox directo en Redis Streams** y consolidación por lotes en PostgreSQL mediante confirmación retardada (`XACK` post-commit).*
+### 🚗 Uber Matching Engine
+- **Ingesta geoespacial de alto rendimiento:** Pipeline de ingesta en Go procesando más de **50.000 actualizaciones GPS/s** sobre índices Redis GEO con latencia de búsqueda **p99 de 3.8 ms**.
+- **Asignación atómica (Anti-Doble Reserva):** Eliminación de condiciones de carrera en la asignación conductor-pasajero mediante **scripts de Lua precompilados en Redis (`EVALSHA`)**, completando el match en **466 µs**.
+- **Resiliencia con Transactional Outbox:** Persistencia desacoplada a PostgreSQL mediante **Redis Streams** y consumo con confirmación manual (**`XACK`**), garantizando entrega de eventos ante caídas de la base de datos.
+- **Recuperación ante fallos (Reaper Worker):** Proceso en segundo plano que detecta desconexiones o cancelaciones abruptas y libera el estado de los conductores huérfanos mediante **TTLs transaccionales de 15 segundos**.
 
 ---
 
