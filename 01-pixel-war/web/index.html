@@ -20,13 +20,15 @@
 
         header {
             padding: 10px 20px;
-            background: rgba(22, 27, 34, 0.85);
+            background: rgba(22, 27, 34, 0.95);
             backdrop-filter: blur(8px);
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #30363d;
             z-index: 10;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .title-group {
@@ -57,10 +59,65 @@
             box-shadow: 0 0 8px #2ea043;
         }
 
+        .controls-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .brush-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #161b22;
+            padding: 3px 6px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+        }
+
+        .brush-btn {
+            background: transparent;
+            color: #8b949e;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .brush-btn:hover { color: #f0f2f5; }
+        .brush-btn.active {
+            background: #1f6feb;
+            color: #ffffff;
+        }
+
+        .sim-btn {
+            background: #238636;
+            color: #ffffff;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.15s;
+        }
+        .sim-btn:hover { background: #2ea043; }
+        .sim-btn.active { background: #da3633; }
+
         .coords-badge {
             font-family: monospace;
-            font-size: 13px;
+            font-size: 12px;
             color: #8b949e;
+            background: #161b22;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
         }
 
         #viewport {
@@ -79,13 +136,30 @@
 
         canvas {
             display: block;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.9), 0 0 0 1px #30363d;
             background: #ffffff;
             image-rendering: pixelated;
         }
 
+        .help-pill {
+            position: absolute;
+            bottom: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid #30363d;
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #8b949e;
+            pointer-events: none;
+            z-index: 5;
+            transition: opacity 0.3s;
+        }
+
         footer {
-            padding: 12px 20px;
+            padding: 10px 20px;
             background: rgba(22, 27, 34, 0.95);
             backdrop-filter: blur(8px);
             border-top: 1px solid #30363d;
@@ -104,6 +178,7 @@
             cursor: pointer;
             border: 2px solid transparent;
             transition: transform 0.1s, border-color 0.1s;
+            flex-shrink: 0;
         }
         .color-swatch:hover {
             transform: scale(1.15);
@@ -111,27 +186,52 @@
         .color-swatch.active {
             border-color: #ffffff;
             transform: scale(1.2);
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
     </style>
 </head>
 <body>
     <header>
         <div class="title-group">
-            <h2>🎨 Pixel War</h2>
+            <h2 style="font-size: 18px;">🎨 Pixel War</h2>
             <span class="status-badge">
                 <span id="ws-dot" class="status-dot"></span>
                 <span id="ws-status">Conectando...</span>
             </span>
         </div>
-        <div class="coords-badge">
-            <span id="coords-text">X: 0, Y: 0</span> | Zoom: <span id="zoom-text">1.0x</span>
+
+        <div class="controls-group">
+            <!-- Brush Size Picker -->
+            <div class="brush-group">
+                <span style="color: #8b949e; font-size: 11px; margin-right: 4px;">TAMAÑO:</span>
+                <button class="brush-btn" onclick="setBrush(1)">1px</button>
+                <button class="brush-btn active" onclick="setBrush(3)">3px</button>
+                <button class="brush-btn" onclick="setBrush(6)">6px</button>
+                <button class="brush-btn" onclick="setBrush(10)">10px</button>
+            </div>
+
+            <!-- Bot Simulator Toggle -->
+            <button id="btn-bots" class="sim-btn" onclick="toggleBotTraffic()">
+                <span>⚡ Simular Bots (50 VUs)</span>
+            </button>
+
+            <!-- Reset View -->
+            <button class="brush-btn" style="border: 1px solid #30363d;" onclick="resetView()">
+                <span>Centrar Lienzo</span>
+            </button>
+
+            <div class="coords-badge">
+                <span id="coords-text">X: 0, Y: 0</span> | <span id="zoom-text">1.0x</span>
+            </div>
         </div>
     </header>
 
     <div id="viewport">
         <div id="canvas-wrapper">
             <canvas id="canvas" width="1000" height="1000"></canvas>
+        </div>
+        <div class="help-pill" id="help-pill">
+            🖱️ Clic o arrastra para pintar • 🔍 Rueda para Zoom • ✋ Shift+Arrastra o botón central para mover
         </div>
     </div>
 
@@ -147,7 +247,8 @@
             "#D4D7D9", "#FFFFFF"
         ];
 
-        let selectedColor = 2; // Default Orange-Red
+        let selectedColor = 2; // Default Orange-Red (#FF4500)
+        let brushSize = 3;
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const wrapper = document.getElementById('canvas-wrapper');
@@ -158,17 +259,37 @@
         const wsStatus = document.getElementById('ws-status');
 
         // Pan and Zoom State
-        let scale = 1.0;
-        let panX = (window.innerWidth - 1000) / 2;
-        let panY = (window.innerHeight - 150 - 1000) / 2;
+        let scale = 0.8;
+        let panX = 0;
+        let panY = 0;
         let isDragging = false;
+        let isPainting = false;
         let startX, startY;
 
         function updateTransform() {
             wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
             zoomText.innerText = scale.toFixed(1) + 'x';
         }
-        updateTransform();
+
+        function resetView() {
+            const availW = viewport.clientWidth - 40;
+            const availH = viewport.clientHeight - 40;
+            scale = Math.min(availW / 1000, availH / 1000, 1.0);
+            if (scale < 0.4) scale = 0.4;
+            panX = (viewport.clientWidth - 1000 * scale) / 2;
+            panY = (viewport.clientHeight - 1000 * scale) / 2;
+            updateTransform();
+        }
+        window.addEventListener('resize', resetView);
+        setTimeout(resetView, 50);
+
+        function setBrush(size) {
+            brushSize = size;
+            document.querySelectorAll('.brush-btn').forEach(b => {
+                if (b.innerText === `${size}px`) b.classList.add('active');
+                else if (b.innerText.endsWith('px')) b.classList.remove('active');
+            });
+        }
 
         // 1. Build Palette Bar
         const paletteBar = document.getElementById('palette-bar');
@@ -253,7 +374,7 @@
         }
         connectWS();
 
-        // 4. Click to Paint (Send 5-byte Binary Frame)
+        // 4. Coordinate Conversion
         function getCanvasCoords(clientX, clientY) {
             const rect = viewport.getBoundingClientRect();
             const mouseX = clientX - rect.left;
@@ -263,48 +384,19 @@
             return { x: canvasX, y: canvasY };
         }
 
-        viewport.onmousemove = (e) => {
-            const { x, y } = getCanvasCoords(e.clientX, e.clientY);
-            if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
-                coordsText.innerText = `X: ${x}, Y: ${y}`;
-            }
-
-            if (isDragging) {
-                panX = e.clientX - startX;
-                panY = e.clientY - startY;
-                updateTransform();
-            }
-        };
-
-        viewport.onmousedown = (e) => {
-            if (e.button === 1 || e.shiftKey) { // Middle click or shift+drag for pan
-                isDragging = true;
-                startX = e.clientX - panX;
-                startY = e.clientY - panY;
-            } else if (e.button === 0) { // Left click = Paint
-                const { x, y } = getCanvasCoords(e.clientX, e.clientY);
-                if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
-                    paintPixel(x, y, selectedColor);
+        // 5. Drawing with Brush Size
+        function paintBrush(cx, cy, colorIdx) {
+            const half = Math.floor(brushSize / 2);
+            for (let dy = -half; dy < brushSize - half; dy++) {
+                for (let dx = -half; dx < brushSize - half; dx++) {
+                    const px = cx + dx;
+                    const py = cy + dy;
+                    if (px >= 0 && px < 1000 && py >= 0 && py < 1000) {
+                        paintPixel(px, py, colorIdx);
+                    }
                 }
             }
-        };
-
-        window.onmouseup = () => { isDragging = false; };
-
-        viewport.onwheel = (e) => {
-            e.preventDefault();
-            const zoomFactor = e.deltaY < 0 ? 1.2 : 0.8;
-            const newScale = Math.min(Math.max(scale * zoomFactor, 0.4), 20.0);
-            
-            const rect = viewport.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            panX = mouseX - (mouseX - panX) * (newScale / scale);
-            panY = mouseY - (mouseY - panY) * (newScale / scale);
-            scale = newScale;
-            updateTransform();
-        };
+        }
 
         function paintPixel(x, y, colorIdx) {
             // Local optimistic paint
@@ -319,6 +411,84 @@
                 view.setUint16(2, y, false);
                 view.setUint8(4, colorIdx);
                 ws.send(buffer);
+            }
+        }
+
+        // Mouse Events
+        viewport.onmousemove = (e) => {
+            const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+            if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+                coordsText.innerText = `X: ${x}, Y: ${y}`;
+            }
+
+            if (isDragging) {
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                updateTransform();
+            } else if (isPainting) {
+                if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+                    paintBrush(x, y, selectedColor);
+                }
+            }
+        };
+
+        viewport.onmousedown = (e) => {
+            if (e.button === 1 || e.shiftKey) { // Middle click or shift+drag for pan
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+            } else if (e.button === 0) { // Left click = Paint
+                isPainting = true;
+                const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+                if (x >= 0 && x < 1000 && y >= 0 && y < 1000) {
+                    paintBrush(x, y, selectedColor);
+                }
+            }
+        };
+
+        window.onmouseup = () => {
+            isDragging = false;
+            isPainting = false;
+        };
+
+        viewport.onwheel = (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.2 : 0.8;
+            const newScale = Math.min(Math.max(scale * zoomFactor, 0.3), 30.0);
+            
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            panX = mouseX - (mouseX - panX) * (newScale / scale);
+            panY = mouseY - (mouseY - panY) * (newScale / scale);
+            scale = newScale;
+            updateTransform();
+        };
+
+        // 6. Interactive Bot Traffic Simulator
+        let botInterval = null;
+        function toggleBotTraffic() {
+            const btn = document.getElementById('btn-bots');
+            if (botInterval) {
+                clearInterval(botInterval);
+                botInterval = null;
+                btn.classList.remove('active');
+                btn.innerText = "⚡ Simular Bots (50 VUs)";
+            } else {
+                btn.classList.add('active');
+                btn.innerText = "⏹️ Detener Bots";
+                let tick = 0;
+                botInterval = setInterval(() => {
+                    tick++;
+                    // Spawn 10 simultaneous pixel writes across the canvas
+                    for (let i = 0; i < 10; i++) {
+                        const cx = Math.floor(400 + Math.sin(tick * 0.1 + i) * 150);
+                        const cy = Math.floor(500 + Math.cos(tick * 0.1 + i) * 150);
+                        const c = (tick + i) % PALETTE.length;
+                        paintPixel(cx, cy, c);
+                    }
+                }, 40);
             }
         }
     </script>

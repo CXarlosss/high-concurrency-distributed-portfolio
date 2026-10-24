@@ -4,15 +4,15 @@
 Write-Host "Iniciando los 3 microservicios de alto rendimiento..." -ForegroundColor Cyan
 
 # 1. Pixel War (Puerto 8080)
-Start-Process -FilePath ".\server.exe" -WorkingDirectory "$PSScriptRoot\01-pixel-war" -WindowStyle Hidden
+Start-Process -FilePath "$PSScriptRoot\01-pixel-war\server.exe" -WorkingDirectory "$PSScriptRoot\01-pixel-war" -WindowStyle Hidden
 Write-Host "  [OK] Pixel War escuchando en: http://localhost:8080" -ForegroundColor Green
 
 # 2. Arena .io (Puerto 8081)
-Start-Process -FilePath ".\server.exe" -WorkingDirectory "$PSScriptRoot\02-arena-io" -WindowStyle Hidden
+Start-Process -FilePath "$PSScriptRoot\02-arena-io\server.exe" -WorkingDirectory "$PSScriptRoot\02-arena-io" -WindowStyle Hidden
 Write-Host "  [OK] Arena .io escuchando en: http://localhost:8081" -ForegroundColor Green
 
 # 3. Uber Matching Radar (Puerto 8082)
-Start-Process -FilePath ".\server.exe" -WorkingDirectory "$PSScriptRoot\03-uber-matching" -WindowStyle Hidden
+Start-Process -FilePath "$PSScriptRoot\03-uber-matching\server.exe" -WorkingDirectory "$PSScriptRoot\03-uber-matching" -WindowStyle Hidden
 Write-Host "  [OK] Uber Radar escuchando en: http://localhost:8082" -ForegroundColor Green
 
 # Abrir el Portfolio Hub en el navegador
