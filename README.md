@@ -21,6 +21,10 @@ Cada proyecto aborda un dominio computacional complejo, implementado desde el me
 
 ---
 
+> 💡 **¿Grabando demos en vídeo para evaluadores o LinkedIn?** Consulta los [Guiones Técnicos de 60 Segundos con Visual Cues y Locución](DEMO_SCRIPTS.md).
+
+---
+
 ## 📁 Estructura del Repositorio
 
 ```text
