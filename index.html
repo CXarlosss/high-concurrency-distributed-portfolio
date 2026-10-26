@@ -12,32 +12,70 @@
     <style>
         :root {
             --bg-base: #09090b;
+            --card-bg: rgba(18, 20, 29, 0.65);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --nav-bg: rgba(9, 9, 11, 0.85);
+            --dot-color: rgba(255, 255, 255, 0.07);
+            --accent-hero: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
         }
+
+        [data-theme="cyberpunk"] {
+            --bg-base: #09090b;
+            --card-bg: rgba(18, 20, 29, 0.70);
+            --card-border: rgba(255, 255, 255, 0.10);
+            --nav-bg: rgba(9, 9, 11, 0.88);
+            --dot-color: rgba(56, 189, 248, 0.12);
+            --accent-hero: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.2);
+        }
+
+        [data-theme="obsidian"] {
+            --bg-base: #000000;
+            --card-bg: rgba(17, 17, 19, 0.88);
+            --card-border: rgba(255, 255, 255, 0.14);
+            --nav-bg: rgba(10, 10, 10, 0.94);
+            --dot-color: rgba(255, 255, 255, 0.10);
+            --accent-hero: #f4f4f5;
+            --accent-glow: rgba(255, 255, 255, 0.15);
+        }
+
+        [data-theme="matrix"] {
+            --bg-base: #040804;
+            --card-bg: rgba(6, 22, 10, 0.85);
+            --card-border: rgba(34, 197, 94, 0.28);
+            --nav-bg: rgba(3, 12, 5, 0.94);
+            --dot-color: rgba(34, 197, 94, 0.18);
+            --accent-hero: #22c55e;
+            --accent-glow: rgba(34, 197, 94, 0.22);
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-base);
-            background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+            background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
             background-size: 24px 24px;
             color: #f4f4f5;
+            transition: background-color 0.3s ease;
         }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
         
         /* Glassmorphism */
         .glass-nav {
-            background: rgba(9, 9, 11, 0.85);
+            background: var(--nav-bg);
             backdrop-filter: blur(16px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid var(--card-border);
+            transition: background 0.3s ease, border-color 0.3s ease;
         }
         .glass-card {
-            background: rgba(18, 20, 29, 0.65);
+            background: var(--card-bg);
             backdrop-filter: blur(14px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--card-border);
             transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .glass-card:hover {
             transform: translateY(-4px);
-            background: rgba(22, 26, 38, 0.75);
-            border-color: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.24);
         }
         .card-emerald:hover {
             box-shadow: 0 16px 36px -10px rgba(16, 185, 129, 0.15), 0 0 0 1px rgba(16, 185, 129, 0.3);
@@ -114,27 +152,46 @@
                 </div>
             </div>
 
-            <!-- Routing Mode Toggle & Links -->
-            <div class="flex items-center gap-3">
+            <!-- Routing Mode Toggle, Theme Selector, Audio & Links -->
+            <div class="flex items-center flex-wrap gap-2.5">
                 <div class="flex items-center bg-zinc-900/90 p-1 rounded-lg border border-zinc-800 text-xs font-mono">
-                    <button id="btn-mode-gateway" onclick="setMode('gateway')" class="px-3 py-1.5 rounded-md transition font-medium bg-blue-600 text-white shadow-sm">
-                        🌐 Nginx Gateway (:80)
+                    <button id="btn-mode-gateway" onclick="setMode('gateway')" class="px-2.5 py-1.5 rounded-md transition font-medium bg-blue-600 text-white shadow-sm">
+                        🌐 Gateway (:80)
                     </button>
-                    <button id="btn-mode-direct" onclick="setMode('direct')" class="px-3 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200 transition font-medium">
-                        🔌 Puertos Directos (:8080-82)
+                    <button id="btn-mode-direct" onclick="setMode('direct')" class="px-2.5 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200 transition font-medium">
+                        🔌 Puertos (:8080-82)
                     </button>
                 </div>
 
+                <!-- Theme Selector -->
+                <div class="flex items-center bg-zinc-900/90 p-1 rounded-lg border border-zinc-800 text-xs font-mono">
+                    <button id="btn-theme-cyberpunk" onclick="setTheme('cyberpunk')" title="Cyberpunk Neon (Cian / Magenta)" class="px-2 py-1 rounded-md transition font-medium text-[11px] bg-blue-600 text-white shadow-sm cursor-pointer">
+                        🌌 Neon
+                    </button>
+                    <button id="btn-theme-obsidian" onclick="setTheme('obsidian')" title="Vercel Obsidian (Monocromo Precisión)" class="px-2 py-1 rounded-md transition font-medium text-[11px] text-zinc-400 hover:text-white cursor-pointer">
+                        ▲ Obsidian
+                    </button>
+                    <button id="btn-theme-matrix" onclick="setTheme('matrix')" title="Matrix Emerald (Fósforo Terminal)" class="px-2 py-1 rounded-md transition font-medium text-[11px] text-zinc-400 hover:text-white cursor-pointer">
+                        🟢 Matrix
+                    </button>
+                </div>
+
+                <!-- Web Audio API Feedback Toggle -->
+                <button id="btn-audio-toggle" onclick="audioMgr.toggleMute()" class="px-2.5 py-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 hover:border-zinc-700 transition flex items-center gap-1.5 text-xs font-mono shadow-sm cursor-pointer" title="Alternar Audio Háptico Sintetizado">
+                    <span id="audio-icon">🔊</span>
+                    <span id="audio-label" class="hidden xl:inline text-[11px]">Audio</span>
+                </button>
+
                 <!-- CTA Auditoría & Benchmarks -->
-                <button id="btn-open-audit" onclick="openAuditModal()" class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border border-blue-400/40 transition flex items-center gap-2 text-xs font-semibold shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer">
+                <button id="btn-open-audit" onclick="openAuditModal()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white border border-blue-400/40 transition flex items-center gap-1.5 text-xs font-semibold shadow-lg shadow-blue-500/20 active:scale-95 cursor-pointer">
                     <span class="text-sm">📊</span>
                     <span class="hidden sm:inline">Auditoría &amp; Benchmarks</span>
                     <span class="sm:hidden">Auditoría</span>
                 </button>
 
-                <a href="https://github.com/CXarlosss/high-concurrency-distributed-portfolio" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700/80 transition flex items-center gap-2 text-xs font-medium shadow-sm">
+                <a href="https://github.com/CXarlosss/high-concurrency-distributed-portfolio" target="_blank" class="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700/80 transition flex items-center gap-1.5 text-xs font-medium shadow-sm">
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                    <span>GitHub Repo</span>
+                    <span>GitHub</span>
                 </a>
             </div>
         </div>
@@ -205,6 +262,46 @@
                 <button onclick="switchTerminalCmd()" class="text-[11px] text-zinc-400 hover:text-zinc-200 transition underline underline-offset-4">
                     ver script PowerShell
                 </button>
+            </div>
+        </div>
+
+        <!-- Live Data-Plane Distributed Topology Mesh (60 FPS Canvas) -->
+        <div class="mb-8 glass-card rounded-2xl p-5 relative overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 font-mono text-sm shadow-sm">
+                        🌐
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-sm sm:text-base font-bold text-white tracking-tight">Topología Distribuida en Tiempo Real</h2>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-950/80 text-blue-400 border border-blue-800/60 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-blue-400 pulse-live"></span>
+                                DATA-PLANE MESH 60 FPS
+                            </span>
+                        </div>
+                        <p class="text-xs text-zinc-400 font-mono">
+                            Flujo bidireccional: Gateway &rarr; 3 Microservicios Go &rarr; Persistencia Redis 7.2 / Postgres 16
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex items-center gap-2 text-xs font-mono text-zinc-400 bg-black/60 px-3 py-1.5 rounded-lg border border-zinc-800">
+                        <span>Tráfico Mesh:</span>
+                        <span id="mesh-ops-counter" class="text-emerald-400 font-bold">124.8k ops/s</span>
+                    </div>
+                    <button id="btn-ping-mesh" onclick="pingMeshBurst()" class="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white border border-blue-400/40 transition text-xs font-semibold font-mono flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-lg shadow-blue-950/50">
+                        <span>⚡</span>
+                        <span>Inyectar Ping Burst</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="relative w-full rounded-xl overflow-hidden border border-zinc-800/80 bg-zinc-950/90 shadow-inner">
+                <canvas id="topology-mesh-canvas" class="w-full block" height="230"></canvas>
+                <div id="mesh-tooltip" class="absolute pointer-events-none opacity-0 transition-opacity duration-150 p-3 rounded-xl bg-zinc-950/95 border border-zinc-700 text-xs font-mono text-zinc-200 shadow-2xl z-20 backdrop-blur-md"></div>
             </div>
         </div>
 
@@ -712,9 +809,153 @@
         </div>
     </div>
 
-    <!-- Interactive Scripts: Healthchecks, Mode Switcher, Animated Counters & Live Previews -->
+    <!-- Interactive Scripts: Audio Engine, Theme Switcher, Healthchecks & Distributed Mesh -->
     <script>
-        // --- 1. Mode Switcher (Gateway vs Direct Ports) ---
+        // --- 1. Synthesized Web Audio API Engine (Zero External Assets) ---
+        class AudioManager {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = localStorage.getItem('systems_hub_audio_muted') === 'true';
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playTick() {
+                if (this.isMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1800, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.025);
+                gain.gain.setValueAtTime(0.06, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.025);
+            }
+
+            playChord() {
+                if (this.isMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                freqs.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.035);
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.linearRampToValueAtTime(0.05 / (idx + 1), now + idx * 0.035 + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.035 + 0.42);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.035);
+                    osc.stop(now + idx * 0.035 + 0.42);
+                });
+            }
+
+            playWarning() {
+                if (this.isMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.exponentialRampToValueAtTime(110, now + 0.18);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.18);
+            }
+
+            playToggle() {
+                if (this.isMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                [880, 1320].forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.04);
+                    gain.gain.setValueAtTime(0.05, now + i * 0.04);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.035);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + i * 0.04);
+                    osc.stop(now + i * 0.04 + 0.035);
+                });
+            }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                localStorage.setItem('systems_hub_audio_muted', this.isMuted ? 'true' : 'false');
+                this.updateUI();
+                if (!this.isMuted) this.playToggle();
+            }
+
+            updateUI() {
+                const icon = document.getElementById('audio-icon');
+                const label = document.getElementById('audio-label');
+                const btn = document.getElementById('btn-audio-toggle');
+                if (icon) icon.innerText = this.isMuted ? '🔇' : '🔊';
+                if (label) label.innerText = this.isMuted ? 'Mudo' : 'Audio';
+                if (btn) {
+                    btn.title = this.isMuted ? 'Audio Silenciado (Clic para activar)' : 'Audio Sintetizado Activo (Clic para silenciar)';
+                    if (this.isMuted) {
+                        btn.className = "px-2.5 py-1.5 rounded-lg bg-zinc-900/60 text-zinc-500 border border-zinc-800 transition flex items-center gap-1.5 text-xs font-mono shadow-sm cursor-pointer";
+                    } else {
+                        btn.className = "px-2.5 py-1.5 rounded-lg bg-zinc-900/90 text-zinc-300 border border-zinc-700/80 transition flex items-center gap-1.5 text-xs font-mono shadow-sm cursor-pointer";
+                    }
+                }
+            }
+        }
+        const audioMgr = new AudioManager();
+        window.addEventListener('click', () => audioMgr.init(), { once: true });
+        audioMgr.updateUI();
+
+        // --- 2. High-Contrast Theme Customizer ---
+        let currentTheme = localStorage.getItem('systems_hub_theme') || 'cyberpunk';
+        function setTheme(theme, silent = false) {
+            currentTheme = theme;
+            localStorage.setItem('systems_hub_theme', theme);
+            document.documentElement.setAttribute('data-theme', theme);
+
+            const themes = ['cyberpunk', 'obsidian', 'matrix'];
+            themes.forEach(t => {
+                const btn = document.getElementById(`btn-theme-${t}`);
+                if (!btn) return;
+                if (t === theme) {
+                    btn.className = "px-2 py-1 rounded-md transition font-medium text-[11px] bg-blue-600 text-white shadow-sm cursor-pointer";
+                    if (theme === 'matrix') btn.className = "px-2 py-1 rounded-md transition font-medium text-[11px] bg-emerald-600 text-white shadow-sm cursor-pointer";
+                    if (theme === 'obsidian') btn.className = "px-2 py-1 rounded-md transition font-medium text-[11px] bg-zinc-200 text-black shadow-sm cursor-pointer";
+                } else {
+                    btn.className = "px-2 py-1 rounded-md transition font-medium text-[11px] text-zinc-400 hover:text-white cursor-pointer";
+                }
+            });
+
+            if (!silent) audioMgr.playToggle();
+        }
+        setTheme(currentTheme, true);
+
+        // --- 3. Mode Switcher (Gateway vs Direct Ports) ---
         let currentMode = "direct";
         if (location.port === "80" || (location.protocol === "http:" && location.port === "" && !location.pathname.includes(".html"))) {
             currentMode = "gateway";
@@ -734,8 +975,8 @@
             const uDesc = document.getElementById('route-uber-desc');
 
             if (mode === 'gateway') {
-                btnGw.className = "px-3 py-1.5 rounded-md transition font-medium bg-blue-600 text-white shadow-sm";
-                btnDir.className = "px-3 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200 transition font-medium";
+                btnGw.className = "px-2.5 py-1.5 rounded-md transition font-medium bg-blue-600 text-white shadow-sm";
+                btnDir.className = "px-2.5 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200 transition font-medium";
                 pMain.href = "/pixelwar/";
                 aMain.href = "/arena/";
                 uMain.href = "/uber/";
@@ -743,8 +984,8 @@
                 aDesc.innerText = "Gateway: /arena/";
                 uDesc.innerText = "Gateway: /uber/";
             } else {
-                btnDir.className = "px-3 py-1.5 rounded-md transition font-medium bg-blue-600 text-white shadow-sm";
-                btnGw.className = "px-3 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200 transition font-medium";
+                btnDir.className = "px-2.5 py-1.5 rounded-md transition font-medium bg-blue-600 text-white shadow-sm";
+                btnGw.className = "px-2.5 py-1.5 rounded-md text-zinc-400 hover:text-zinc-200 transition font-medium";
                 pMain.href = "http://localhost:8080";
                 aMain.href = "http://localhost:8081";
                 uMain.href = "http://localhost:8082";
@@ -752,10 +993,12 @@
                 aDesc.innerText = "Directo: :8081";
                 uDesc.innerText = "Directo: :8082";
             }
+            audioMgr.playTick();
             runHealthchecks();
         }
 
-        // --- 2. Live Healthchecks (Polling every 3 seconds) ---
+        // --- 4. Live Healthchecks (Polling every 3 seconds) ---
+        let previousStatus = { pixel: true, arena: true, uber: true };
         async function checkEndpoint(url) {
             try {
                 const controller = new AbortController();
@@ -774,9 +1017,28 @@
             const arenaUrl = isGw ? '/arena/health' : 'http://localhost:8081/health';
             const uberUrl = isGw ? '/uber/health' : 'http://localhost:8082/health';
 
-            updateBadge('health-pixel', 'health-pixel-txt', await checkEndpoint(pixelUrl), isGw ? '/pixelwar/' : ':8080', 'emerald');
-            updateBadge('health-arena', 'health-arena-txt', await checkEndpoint(arenaUrl), isGw ? '/arena/' : ':8081', 'blue');
-            updateBadge('health-uber', 'health-uber-txt', await checkEndpoint(uberUrl), isGw ? '/uber/' : ':8082', 'amber');
+            const [pAlive, aAlive, uAlive] = await Promise.all([
+                checkEndpoint(pixelUrl),
+                checkEndpoint(arenaUrl),
+                checkEndpoint(uberUrl)
+            ]);
+
+            // Audio alert if any running service abruptly goes down
+            if ((previousStatus.pixel && !pAlive) || (previousStatus.arena && !aAlive) || (previousStatus.uber && !uAlive)) {
+                audioMgr.playWarning();
+            }
+            previousStatus = { pixel: pAlive, arena: aAlive, uber: uAlive };
+
+            updateBadge('health-pixel', 'health-pixel-txt', pAlive, isGw ? '/pixelwar/' : ':8080', 'emerald');
+            updateBadge('health-arena', 'health-arena-txt', aAlive, isGw ? '/arena/' : ':8081', 'blue');
+            updateBadge('health-uber', 'health-uber-txt', uAlive, isGw ? '/uber/' : ':8082', 'amber');
+
+            // Update Topology Mesh Nodes State
+            if (window.updateMeshNodeStatus) {
+                window.updateMeshNodeStatus('pixel', pAlive);
+                window.updateMeshNodeStatus('arena', aAlive);
+                window.updateMeshNodeStatus('uber', uAlive);
+            }
         }
 
         function updateBadge(badgeId, textId, isAlive, label, color) {
@@ -796,7 +1058,7 @@
         setInterval(runHealthchecks, 3000);
         setTimeout(runHealthchecks, 300);
 
-        // --- 3. Animated Metric Counters on Load ---
+        // --- 5. Animated Metric Counters on Load ---
         function animateCounter(id, target, suffix = '', duration = 1200) {
             const el = document.getElementById(id);
             if (!el) return;
@@ -815,17 +1077,22 @@
         animateCounter('counter-gps', 56497, ' /s');
         animateCounter('counter-gc', 0, ' ms');
 
-        // --- 4. Terminal Command Helper ---
+        // --- 6. Terminal Command Helper ---
         let isDockerCmd = true;
         function switchTerminalCmd() {
+            audioMgr.playTick();
             isDockerCmd = !isDockerCmd;
             document.getElementById('cmd-text').innerText = isDockerCmd ? "docker compose up --build" : ".\\run_all.ps1";
         }
 
         function copyCommand() {
+            audioMgr.playTick();
             const text = document.getElementById('cmd-text').innerText;
             navigator.clipboard.writeText(text);
-            alert(`Comando '${text}' copiado al portapapeles.`);
+            const codeEl = document.getElementById('cmd-text');
+            const prev = codeEl.innerText;
+            codeEl.innerText = "✓ Copiado al portapapeles";
+            setTimeout(() => codeEl.innerText = prev, 1500);
         }
 
         setMode(currentMode);
@@ -942,6 +1209,7 @@
 
         // --- 6. Technical Audit Modal & Direct Blob Generators ---
         function openAuditModal() {
+            audioMgr.playChord();
             const modal = document.getElementById('audit-modal');
             if (modal) {
                 modal.classList.add('open');
@@ -950,6 +1218,7 @@
         }
 
         function closeAuditModal() {
+            audioMgr.playTick();
             const modal = document.getElementById('audit-modal');
             if (modal) {
                 modal.classList.remove('open');
@@ -970,6 +1239,7 @@
         });
 
         function switchAuditTab(tab) {
+            audioMgr.playTick();
             const tabs = ['metrics', 'resilience', 'repro'];
             tabs.forEach(t => {
                 const btn = document.getElementById(`tab-btn-${t}`);
@@ -985,6 +1255,7 @@
         }
 
         function copySnippet(text, btn) {
+            audioMgr.playTick();
             navigator.clipboard.writeText(text);
             const originalHTML = btn.innerHTML;
             btn.innerHTML = `<span class="text-emerald-400 font-bold">✓ Copiado</span>`;
@@ -1114,6 +1385,7 @@
         };
 
         function downloadAuditJSON() {
+            audioMgr.playChord();
             AUDIT_DATA.metadata.timestamp = new Date().toISOString();
             const jsonStr = JSON.stringify(AUDIT_DATA, null, 2);
             const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
@@ -1128,6 +1400,7 @@
         }
 
         function downloadAuditMarkdown() {
+            audioMgr.playChord();
             const dateStr = new Date().toISOString();
             const md = `# 📊 Reporte de Auditoría Técnica & Benchmarks de Sistemas
 
@@ -1222,6 +1495,302 @@ docker compose up --build
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
+
+        // --- 7. Distributed Topology Mesh 2D Simulation (Canvas 60 FPS) ---
+        (function() {
+            const canvas = document.getElementById('topology-mesh-canvas');
+            const tooltip = document.getElementById('mesh-tooltip');
+            const opsCounter = document.getElementById('mesh-ops-counter');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            let width = 0;
+            let height = 0;
+            let dpr = window.devicePixelRatio || 1;
+
+            const nodes = [
+                { id: 'nginx', label: 'Nginx Gateway', sub: ':80 Ingress', col: 0.12, row: 0.50, color: '#38bdf8', icon: '🌐', protocol: 'HTTP/2 • Reverse Proxy', throughput: '175.4k req/s', state: 'ONLINE', ping: '0.12 ms' },
+                { id: 'pixel', label: 'Pixel War', sub: ':8080 Hub', col: 0.48, row: 0.22, color: '#10b981', icon: '🎨', protocol: 'Binary WS (5B) • 64 Mutexes', throughput: '97.4k msg/s', state: 'ONLINE', ping: '0.42 ms' },
+                { id: 'arena', label: 'Arena .io', sub: ':8081 Tick', col: 0.48, row: 0.50, color: '#38bdf8', icon: '🎮', protocol: 'Binary WS (18B) • 30 TPS', throughput: '22.1k inp/s', state: 'ONLINE', ping: '0.18 ms' },
+                { id: 'uber', label: 'Uber Engine', sub: ':8082 Dispatch', col: 0.48, row: 0.78, color: '#f59e0b', icon: '🚗', protocol: 'HTTP/2 + Redis Lua EVALSHA', throughput: '56.5k GPS/s', state: 'ONLINE', ping: '1.12 ms' },
+                { id: 'redis', label: 'Redis 7.2 Core', sub: 'GEO / Streams / Lua', col: 0.86, row: 0.35, color: '#f43f5e', icon: '⚡', protocol: 'Pipelined RESP3 • In-Memory', throughput: '120.0k cmd/s', state: 'ONLINE', ping: '0.25 ms' },
+                { id: 'postgres', label: 'PostgreSQL 16', sub: 'Event WAL & Outbox', col: 0.86, row: 0.68, color: '#a855f7', icon: '🐘', protocol: 'ACID • Transactional Outbox', throughput: '8.2k tx/s', state: 'ONLINE', ping: '1.80 ms' }
+            ];
+
+            const nodeMap = new Map();
+            nodes.forEach(n => nodeMap.set(n.id, n));
+
+            window.updateMeshNodeStatus = function(nodeId, isOnline) {
+                const n = nodeMap.get(nodeId);
+                if (n) {
+                    n.state = isOnline ? 'ONLINE' : 'OFFLINE';
+                }
+            };
+
+            const links = [
+                { from: 'nginx', to: 'pixel', color: '#10b981', label: '/pixelwar/ws', flow: 1.0, particles: [] },
+                { from: 'nginx', to: 'arena', color: '#38bdf8', label: '/arena/ws', flow: 1.0, particles: [] },
+                { from: 'nginx', to: 'uber', color: '#f59e0b', label: '/uber/api', flow: 1.0, particles: [] },
+                { from: 'pixel', to: 'redis', color: '#10b981', label: 'Snapshots/Deltas', flow: 0.8, particles: [] },
+                { from: 'arena', to: 'redis', color: '#38bdf8', label: 'Leaderboard Hash', flow: 0.6, particles: [] },
+                { from: 'uber', to: 'redis', color: '#f59e0b', label: 'GEO / Atomic Locks', flow: 1.2, particles: [] },
+                { from: 'uber', to: 'postgres', color: '#a855f7', label: 'Outbox Event Stream', flow: 0.7, particles: [] }
+            ];
+
+            // Initialize link particle pool
+            links.forEach(l => {
+                const count = Math.round(4 * l.flow);
+                for (let i = 0; i < count; i++) {
+                    l.particles.push({
+                        t: Math.random(),
+                        speed: 0.007 + Math.random() * 0.006,
+                        size: 2.2 + Math.random() * 1.2,
+                        burst: false
+                    });
+                }
+            });
+
+            function resize() {
+                const rect = canvas.getBoundingClientRect();
+                width = rect.width;
+                height = 230;
+                dpr = window.devicePixelRatio || 1;
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                ctx.resetTransform?.();
+                ctx.scale(dpr, dpr);
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            let hoveredNode = null;
+            let lastHoveredId = null;
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+
+                let found = null;
+                for (const n of nodes) {
+                    const nx = n.col * width;
+                    const ny = n.row * height;
+                    const dist = Math.hypot(mx - nx, my - ny);
+                    if (dist < 26) {
+                        found = n;
+                        break;
+                    }
+                }
+
+                if (found !== hoveredNode) {
+                    hoveredNode = found;
+                    canvas.style.cursor = found ? 'pointer' : 'default';
+
+                    if (found && found.id !== lastHoveredId) {
+                        lastHoveredId = found.id;
+                        audioMgr.playTick();
+                    }
+                }
+
+                if (hoveredNode && tooltip) {
+                    tooltip.innerHTML = `
+                        <div class="flex items-center gap-2 mb-1.5 pb-1 border-b border-zinc-800">
+                            <span class="text-base">${hoveredNode.icon}</span>
+                            <div>
+                                <span class="font-bold text-white text-xs">${hoveredNode.label}</span>
+                                <span class="text-[10px] text-zinc-400 font-mono ml-1">(${hoveredNode.sub})</span>
+                            </div>
+                        </div>
+                        <div class="text-[11px] text-zinc-300 space-y-1 font-mono">
+                            <div class="flex justify-between gap-4"><span class="text-zinc-500">Protocolo:</span> <span>${hoveredNode.protocol}</span></div>
+                            <div class="flex justify-between gap-4"><span class="text-zinc-500">Throughput:</span> <span class="text-emerald-400 font-bold">${hoveredNode.throughput}</span></div>
+                            <div class="flex justify-between gap-4"><span class="text-zinc-500">RTT Latencia:</span> <span class="text-blue-400">${hoveredNode.ping}</span></div>
+                            <div class="flex justify-between gap-4"><span class="text-zinc-500">Estado:</span> <span class="${hoveredNode.state === 'ONLINE' ? 'text-emerald-400' : 'text-red-400'} font-semibold">● ${hoveredNode.state}</span></div>
+                        </div>
+                    `;
+                    tooltip.style.opacity = '1';
+                    const tipWidth = 240;
+                    const tipHeight = 110;
+                    let left = mx + 16;
+                    let top = my + 16;
+                    if (left + tipWidth > width) left = mx - tipWidth - 12;
+                    if (top + tipHeight > height) top = my - tipHeight - 12;
+                    tooltip.style.left = `${Math.max(6, left)}px`;
+                    tooltip.style.top = `${Math.max(6, top)}px`;
+                } else if (tooltip) {
+                    tooltip.style.opacity = '0';
+                    lastHoveredId = null;
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                hoveredNode = null;
+                lastHoveredId = null;
+                if (tooltip) tooltip.style.opacity = '0';
+            });
+
+            // Ping burst trigger
+            window.pingMeshBurst = function() {
+                audioMgr.playChord();
+                links.forEach(l => {
+                    for (let i = 0; i < 4; i++) {
+                        l.particles.push({
+                            t: i * 0.12,
+                            speed: 0.022 + Math.random() * 0.008,
+                            size: 3.5,
+                            burst: true
+                        });
+                    }
+                });
+
+                if (opsCounter) {
+                    opsCounter.innerText = "284.2k ops/s (BURST)";
+                    opsCounter.className = "text-amber-400 font-bold animate-pulse";
+                    setTimeout(() => {
+                        opsCounter.innerText = "124.8k ops/s";
+                        opsCounter.className = "text-emerald-400 font-bold";
+                    }, 2400);
+                }
+            };
+
+            // Main 60 FPS Render Loop
+            function render() {
+                ctx.clearRect(0, 0, width, height);
+
+                // Subtle mesh background grid
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
+                ctx.lineWidth = 1;
+                const gridStep = 24;
+                for (let x = 0; x < width; x += gridStep) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < height; y += gridStep) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.stroke();
+                }
+
+                // 1. Draw Links & Curved Data Flow
+                links.forEach(l => {
+                    const src = nodeMap.get(l.from);
+                    const dst = nodeMap.get(l.to);
+                    if (!src || !dst) return;
+
+                    const sx = src.col * width;
+                    const sy = src.row * height;
+                    const dx = dst.col * width;
+                    const dy = dst.row * height;
+
+                    const cpx = (sx + dx) / 2;
+                    const cpy = (sy + dy) / 2 + (dy === sy ? -14 : (dy > sy ? -10 : 10));
+
+                    // Base line
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.quadraticCurveTo(cpx, cpy, dx, dy);
+                    ctx.strokeStyle = l.color + '26'; // ~15% opacity
+                    ctx.lineWidth = 1.6;
+                    ctx.stroke();
+
+                    // Advance and render particles
+                    for (let i = l.particles.length - 1; i >= 0; i--) {
+                        const p = l.particles[i];
+                        const isNodeDown = src.state !== 'ONLINE' || dst.state !== 'ONLINE';
+                        p.t += isNodeDown ? p.speed * 0.2 : p.speed;
+
+                        if (p.t > 1) {
+                            if (p.burst) {
+                                l.particles.splice(i, 1);
+                                continue;
+                            } else {
+                                p.t = 0;
+                            }
+                        }
+
+                        // Quadratic Bezier point
+                        const inv = 1 - p.t;
+                        const bx = inv * inv * sx + 2 * inv * p.t * cpx + p.t * p.t * dx;
+                        const by = inv * inv * sy + 2 * inv * p.t * cpy + p.t * p.t * dy;
+
+                        ctx.beginPath();
+                        ctx.arc(bx, by, p.size, 0, Math.PI * 2);
+                        ctx.fillStyle = isNodeDown ? '#ef4444' : l.color;
+                        ctx.shadowColor = isNodeDown ? '#ef4444' : l.color;
+                        ctx.shadowBlur = p.burst ? 12 : 6;
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
+                });
+
+                // 2. Draw Nodes
+                nodes.forEach(n => {
+                    const nx = n.col * width;
+                    const ny = n.row * height;
+                    const isHovered = hoveredNode === n;
+                    const isOnline = n.state === 'ONLINE';
+
+                    // Node Halo Glow
+                    if (isHovered) {
+                        ctx.beginPath();
+                        ctx.arc(nx, ny, 28, 0, Math.PI * 2);
+                        ctx.fillStyle = n.color + '25';
+                        ctx.fill();
+                    }
+
+                    // Node Outer Circle
+                    ctx.beginPath();
+                    ctx.arc(nx, ny, 19, 0, Math.PI * 2);
+                    const grad = ctx.createRadialGradient(nx, ny, 2, nx, ny, 19);
+                    grad.addColorStop(0, '#1c1f2e');
+                    grad.addColorStop(1, '#0c0e15');
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+
+                    ctx.lineWidth = isHovered ? 2.2 : 1.5;
+                    ctx.strokeStyle = isOnline ? (isHovered ? '#ffffff' : n.color) : '#ef4444';
+                    ctx.shadowColor = isOnline ? n.color : '#ef4444';
+                    ctx.shadowBlur = isHovered ? 14 : 4;
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+
+                    // Node Emoji Icon
+                    ctx.font = '13px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(n.icon, nx, ny + 1);
+
+                    // Node Status Dot
+                    ctx.beginPath();
+                    ctx.arc(nx + 13, ny - 13, 3.5, 0, Math.PI * 2);
+                    ctx.fillStyle = isOnline ? '#10b981' : '#ef4444';
+                    ctx.shadowColor = isOnline ? '#10b981' : '#ef4444';
+                    ctx.shadowBlur = 6;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    // Labels Under Node
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'top';
+
+                    // Title
+                    ctx.font = '600 11px Inter, sans-serif';
+                    ctx.fillStyle = isHovered ? '#ffffff' : '#e4e4e7';
+                    ctx.fillText(n.label, nx, ny + 24);
+
+                    // Subtitle / Port
+                    ctx.font = '500 9px JetBrains Mono, monospace';
+                    ctx.fillStyle = '#71717a';
+                    ctx.fillText(n.sub, nx, ny + 38);
+                });
+
+                requestAnimationFrame(render);
+            }
+            requestAnimationFrame(render);
+        })();
     </script>
 </body>
 </html>
