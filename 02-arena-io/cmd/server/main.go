@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
 
 	"github.com/cv-projects/arena-io/internal/game"
@@ -108,8 +109,12 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	// Serve visual game client
-	http.Handle("/", http.FileServer(http.Dir("./web")))
+	// Serve visual game client (support root or subfolder execution)
+	webDir := "./web"
+	if _, err := os.Stat(webDir); os.IsNotExist(err) {
+		webDir = "./02-arena-io/web"
+	}
+	http.Handle("/", http.FileServer(http.Dir(webDir)))
 
 	log.Printf("[Arena Web] Listening on :8081")
 	if err := http.ListenAndServe(":8081", nil); err != nil {

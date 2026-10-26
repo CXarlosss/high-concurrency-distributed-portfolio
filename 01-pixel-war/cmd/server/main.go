@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 
@@ -96,8 +97,12 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	// Serve thin client frontend
-	http.Handle("/", http.FileServer(http.Dir("./web")))
+	// Serve thin client frontend (support root or subfolder execution)
+	webDir := "./web"
+	if _, err := os.Stat(webDir); os.IsNotExist(err) {
+		webDir = "./01-pixel-war/web"
+	}
+	http.Handle("/", http.FileServer(http.Dir(webDir)))
 
 	port := ":8080"
 	log.Printf("[Server] High-concurrency Pixel War server listening on %s", port)

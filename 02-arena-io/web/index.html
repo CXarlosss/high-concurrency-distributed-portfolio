@@ -567,6 +567,10 @@
                 <span class="metric-val" id="val-mass" style="color: #10b981;">10</span>
             </div>
             <div class="metric-box">
+                <span class="metric-label">Cámara Zoom</span>
+                <span class="metric-val" id="val-zoom" style="color: #38bdf8;">1.00x</span>
+            </div>
+            <div class="metric-box">
                 <span class="metric-label">Render FPS</span>
                 <span class="metric-val" id="val-fps">60</span>
             </div>
@@ -709,6 +713,8 @@
         let myID = 0;
         let myPos = { x: 1500, y: 1500 };
         let mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        let currentZoom = 1.0;
+        let targetZoom = 1.0;
 
         // Netcode Simulator State
         let simLatency = 0;
@@ -747,19 +753,102 @@
             { color: '#9d4edd', glow: 'rgba(157, 78, 221, 0.4)' }  // Ultraviolet
         ];
 
-        // Eat burst particles
+        // --- Vector Particle & Shockwave FX System ---
         const particles = [];
+        const shockwaves = [];
+
+        function createShockwave(x, y, maxRadius, color = '#00f0ff') {
+            shockwaves.push({
+                x, y,
+                radius: 4,
+                maxRadius: maxRadius,
+                color: color,
+                alpha: 1.0,
+                speed: maxRadius * 3.5
+            });
+        }
+
         function createEatParticle(x, y, color) {
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 6; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const spd = 20 + Math.random() * 40;
+                const spd = 40 + Math.random() * 80;
                 particles.push({
                     x: x, y: y,
                     vx: Math.cos(angle) * spd,
                     vy: Math.sin(angle) * spd,
                     color: color,
                     alpha: 1.0,
-                    size: 2 + Math.random() * 2
+                    size: 2 + Math.random() * 2.5,
+                    decay: 2.2,
+                    glow: true
+                });
+            }
+        }
+
+        function createSplitBurst(x, y, angle, color) {
+            // Forward embers
+            for (let i = 0; i < 18; i++) {
+                const spread = (Math.random() - 0.5) * 0.9;
+                const spd = 160 + Math.random() * 220;
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle + spread) * spd,
+                    vy: Math.sin(angle + spread) * spd,
+                    color: '#ffffff',
+                    alpha: 1.0,
+                    size: 2.5 + Math.random() * 3,
+                    decay: 1.8,
+                    glow: true
+                });
+            }
+            // Backward exhaust plumes
+            for (let i = 0; i < 18; i++) {
+                const spread = (Math.random() - 0.5) * 1.4;
+                const spd = 100 + Math.random() * 180;
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle + Math.PI + spread) * spd,
+                    vy: Math.sin(angle + Math.PI + spread) * spd,
+                    color: color,
+                    alpha: 0.9,
+                    size: 3 + Math.random() * 3.5,
+                    decay: 2.5,
+                    glow: true
+                });
+            }
+        }
+
+        function createEjectBurst(x, y, angle, color) {
+            for (let i = 0; i < 12; i++) {
+                const spread = (Math.random() - 0.5) * 0.6;
+                const spd = 120 + Math.random() * 140;
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle + spread) * spd,
+                    vy: Math.sin(angle + spread) * spd,
+                    color: color,
+                    alpha: 1.0,
+                    size: 2 + Math.random() * 2,
+                    decay: 3.0,
+                    glow: true
+                });
+            }
+        }
+
+        function createDeathExplosion(x, y, radius, color) {
+            for (let i = 0; i < 40; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 60 + Math.random() * (radius * 4.5);
+                particles.push({
+                    x: x + (Math.random() - 0.5) * radius * 0.5,
+                    y: y + (Math.random() - 0.5) * radius * 0.5,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd,
+                    color: Math.random() > 0.3 ? color : '#ffffff',
+                    alpha: 1.0,
+                    size: 2.5 + Math.random() * 4.5,
+                    decay: 1.4 + Math.random() * 1.0,
+                    glow: true
                 });
             }
         }
@@ -859,6 +948,12 @@
                 const winner = getEntityIdentity(winnerID);
                 const victim = getEntityIdentity(victimID);
                 pushKillfeed(winner.name, victim.name, pts);
+
+                const victimEnt = entities.get(victimID);
+                if (victimEnt) {
+                    createDeathExplosion(victimEnt.currentX, victimEnt.currentY, victimEnt.currentRadius, victimEnt.color);
+                    createShockwave(victimEnt.currentX, victimEnt.currentY, victimEnt.currentRadius * 2.8, victimEnt.color);
+                }
                 return;
             }
 
@@ -912,7 +1007,8 @@
                         mass: mass,
                         color: displayColor,
                         name: displayName,
-                        isMe: isMe
+                        isMe: isMe,
+                        trail: []
                     });
                 } else {
                     const ent = entities.get(id);
@@ -932,8 +1028,11 @@
             }
 
             // Remove out-of-AoI entities
-            for (let [id, _] of entities) {
+            for (let [id, ent] of entities) {
                 if (!activeIDs.has(id)) {
+                    if (ent.mass > 22 && !ent.isMe) {
+                        createDeathExplosion(ent.currentX, ent.currentY, ent.currentRadius, ent.color);
+                    }
                     entities.delete(id);
                 }
             }
@@ -1062,8 +1161,8 @@
         setInterval(() => {
             if (ws.readyState !== WebSocket.OPEN) return;
 
-            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2);
-            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2);
+            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2) / currentZoom;
+            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2) / currentZoom;
 
             const buffer = new ArrayBuffer(13);
             const view = new DataView(buffer);
@@ -1100,8 +1199,8 @@
                 return;
             }
 
-            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2);
-            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2);
+            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2) / currentZoom;
+            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2) / currentZoom;
 
             const buffer = new ArrayBuffer(10);
             const view = new DataView(buffer);
@@ -1111,6 +1210,15 @@
             view.setFloat32(6, worldTargetY, true);
 
             sendDelayedBuffer(buffer);
+
+            // Trigger Visual Split Bursts on all eligible player cells
+            for (let [_, ent] of entities) {
+                if (ent.isMe && ent.mass >= 20.0) {
+                    const angle = Math.atan2(worldTargetY - ent.currentY, worldTargetX - ent.currentX);
+                    createSplitBurst(ent.currentX, ent.currentY, angle, ent.color);
+                    createShockwave(ent.currentX, ent.currentY, ent.currentRadius * 2.2, '#00f0ff');
+                }
+            }
             showActionToast("⚡ División celular ejecutada (Impulso + recombinación 15s)");
         }
 
@@ -1132,8 +1240,8 @@
                 return;
             }
 
-            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2);
-            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2);
+            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2) / currentZoom;
+            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2) / currentZoom;
 
             const buffer = new ArrayBuffer(10);
             const view = new DataView(buffer);
@@ -1143,6 +1251,14 @@
             view.setFloat32(6, worldTargetY, true);
 
             sendDelayedBuffer(buffer);
+
+            // Trigger Visual Eject Jet Bursts
+            for (let [_, ent] of entities) {
+                if (ent.isMe && ent.mass >= 13.0) {
+                    const angle = Math.atan2(worldTargetY - ent.currentY, worldTargetX - ent.currentX);
+                    createEjectBurst(ent.currentX + Math.cos(angle) * ent.currentRadius, ent.currentY + Math.sin(angle) * ent.currentRadius, angle, '#00f0ff');
+                }
+            }
         }
 
         window.addEventListener('keydown', (e) => {
@@ -1200,9 +1316,9 @@
             // Framerate-independent lerp factor (60 FPS smooth glide)
             const lerpFactor = 1.0 - Math.pow(0.0005, dt);
 
-            // Target World coordinates under mouse cursor
-            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2);
-            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2);
+            // Target World coordinates under mouse cursor with Camera Zoom scaling
+            const worldTargetX = myPos.x + (mousePos.x - canvas.width / 2) / currentZoom;
+            const worldTargetY = myPos.y + (mousePos.y - canvas.height / 2) / currentZoom;
 
             let maxLocalDrift = 0;
 
@@ -1238,6 +1354,24 @@
                     e.currentY += (e.targetY - e.currentY) * lerpFactor;
                     e.currentRadius += (e.targetRadius - e.currentRadius) * lerpFactor;
                 }
+
+                // Update Motion Blur Trail History
+                if (!e.trail) e.trail = [];
+                const lastT = e.trail[e.trail.length - 1];
+                const moved = lastT ? Math.hypot(e.currentX - lastT.x, e.currentY - lastT.y) : 999;
+                if (moved > 2.0) {
+                    e.trail.push({
+                        x: e.currentX,
+                        y: e.currentY,
+                        radius: e.currentRadius,
+                        alpha: e.isMe ? 0.45 : 0.25
+                    });
+                    const maxLen = e.isMe ? 12 : 6;
+                    if (e.trail.length > maxLen) e.trail.shift();
+                }
+                for (let t of e.trail) {
+                    t.alpha *= 0.94;
+                }
             }
 
             // Update Netcode Drift Badge on HUD
@@ -1251,12 +1385,20 @@
                 driftBadge.className = 'drift-badge';
             }
 
-            // Camera follow: Centroid of all player cells
+            // Camera follow & Dynamic Zoom: Centroid & bounding box of all player cells
             let centroidX = 0, centroidY = 0, myCellCount = 0;
+            let maxPlayerRadius = 15;
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
             for (let [_, e] of entities) {
                 if (e.isMe) {
                     centroidX += e.currentX;
                     centroidY += e.currentY;
+                    if (e.currentRadius > maxPlayerRadius) maxPlayerRadius = e.currentRadius;
+                    minX = Math.min(minX, e.currentX - e.currentRadius);
+                    maxX = Math.max(maxX, e.currentX + e.currentRadius);
+                    minY = Math.min(minY, e.currentY - e.currentRadius);
+                    maxY = Math.max(maxY, e.currentY + e.currentRadius);
                     myCellCount++;
                 }
             }
@@ -1265,13 +1407,25 @@
                 centroidY /= myCellCount;
                 myPos.x += (centroidX - myPos.x) * 0.15;
                 myPos.y += (centroidY - myPos.y) * 0.15;
+
+                // Dynamic Smooth Zoom based on Mass & Sub-cell Spread
+                const spreadSpan = Math.max(maxX - minX, maxY - minY);
+                const massZoom = 26 / Math.max(26, Math.pow(maxPlayerRadius, 0.72));
+                const spreadZoom = Math.min(1.0, 750 / Math.max(750, spreadSpan + 180));
+                targetZoom = Math.max(0.35, Math.min(1.15, Math.min(massZoom, spreadZoom)));
+            } else {
+                targetZoom = 1.0;
             }
 
-            const camX = canvas.width / 2 - myPos.x;
-            const camY = canvas.height / 2 - myPos.y;
+            // Smooth spring zoom interpolation
+            currentZoom += (targetZoom - currentZoom) * 0.05;
+            const elZoom = document.getElementById('val-zoom');
+            if (elZoom) elZoom.innerText = `${currentZoom.toFixed(2)}x`;
 
             ctx.save();
-            ctx.translate(camX, camY);
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(currentZoom, currentZoom);
+            ctx.translate(-myPos.x, -myPos.y);
 
             // A. Spatial Hash Grid (150px Cell Size) with Coordinate Labels
             const gridSize = 150;
@@ -1330,22 +1484,50 @@
                 ctx.restore();
             }
 
-            // Render Eat Particles
+            // Render Shockwaves
+            for (let i = shockwaves.length - 1; i >= 0; i--) {
+                const sw = shockwaves[i];
+                sw.radius += sw.speed * dt;
+                sw.alpha -= dt * 2.2;
+                if (sw.alpha <= 0 || sw.radius >= sw.maxRadius) {
+                    shockwaves.splice(i, 1);
+                    continue;
+                }
+                ctx.save();
+                ctx.strokeStyle = sw.color;
+                ctx.lineWidth = Math.max(1, 3.5 * sw.alpha);
+                ctx.globalAlpha = Math.max(0, sw.alpha);
+                ctx.shadowColor = sw.color;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Render Particles with Friction & Glowing Embers
             for (let i = particles.length - 1; i >= 0; i--) {
                 const pt = particles[i];
                 pt.x += pt.vx * dt;
                 pt.y += pt.vy * dt;
-                pt.alpha -= dt * 2.5;
+                pt.vx *= Math.pow(0.20, dt); // air resistance / friction
+                pt.vy *= Math.pow(0.20, dt);
+                pt.alpha -= dt * (pt.decay || 2.0);
                 if (pt.alpha <= 0) {
                     particles.splice(i, 1);
                     continue;
                 }
+                ctx.save();
                 ctx.beginPath();
-                ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+                ctx.arc(pt.x, pt.y, Math.max(0.5, pt.size * (pt.alpha + 0.3)), 0, Math.PI * 2);
                 ctx.fillStyle = pt.color;
-                ctx.globalAlpha = pt.alpha;
+                ctx.globalAlpha = Math.max(0, Math.min(1, pt.alpha));
+                if (pt.glow) {
+                    ctx.shadowColor = pt.color;
+                    ctx.shadowBlur = 8;
+                }
                 ctx.fill();
-                ctx.globalAlpha = 1.0;
+                ctx.restore();
             }
 
             // D. Authoritative Server Snapshot Ghosting (Netcode Inspector)
@@ -1386,6 +1568,25 @@
                         }
                     }
                 }
+            }
+
+            // D. Render Motion Blur Trails
+            for (let [_, e] of entities) {
+                if (!e.trail || e.trail.length < 2) continue;
+                ctx.save();
+                for (let i = 0; i < e.trail.length; i++) {
+                    const pt = e.trail[i];
+                    const progress = (i + 1) / e.trail.length;
+                    const trailRadius = Math.max(1, pt.radius * progress * 0.85);
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, trailRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = e.color;
+                    ctx.globalAlpha = Math.max(0, pt.alpha * progress * (e.isMe ? 0.35 : 0.18));
+                    ctx.shadowColor = e.color;
+                    ctx.shadowBlur = e.isMe ? 10 : 4;
+                    ctx.fill();
+                }
+                ctx.restore();
             }
 
             // E. Render Entities with Radial Gradients & Glow Halos
