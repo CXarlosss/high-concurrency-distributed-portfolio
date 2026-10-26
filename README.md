@@ -21,7 +21,9 @@ Cada proyecto aborda un dominio computacional complejo, implementado desde el me
 
 ---
 
-> 💡 **¿Grabando demos en vídeo para evaluadores o LinkedIn?** Consulta los [Guiones Técnicos de 60 Segundos con Visual Cues y Locución](DEMO_SCRIPTS.md).
+> 💡 **Recursos de Preparación para Entrevistas:**
+> - 🎬 [Guiones Técnicos de 60 Segundos para Demos en Vídeo (Loom / OBS)](DEMO_SCRIPTS.md)
+> - 🛡️ [Manual de Defensa Técnica: Preguntas Trampa de Arquitectura y System Design](STAFF_INTERVIEW_DEFENSE.md)
 
 ---
 
