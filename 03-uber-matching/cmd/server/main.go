@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
 	"sync/atomic"
 	"time"
 )
@@ -158,7 +159,11 @@ func main() {
 	})
 
 	// Serve visual geospatial radar client
-	http.Handle("/", http.FileServer(http.Dir("./web")))
+	webDir := "./web"
+	if _, err := os.Stat(webDir); os.IsNotExist(err) {
+		webDir = "./03-uber-matching/web"
+	}
+	http.Handle("/", http.FileServer(http.Dir(webDir)))
 
 	port := ":8082"
 	log.Printf("[Server] Uber Matching Engine Geospatial Radar listening on %s", port)

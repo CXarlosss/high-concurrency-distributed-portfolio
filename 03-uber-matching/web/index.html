@@ -149,6 +149,24 @@
             border-color: #f59e0b;
             box-shadow: 0 0 20px rgba(245, 158, 11, 0.45);
         }
+        .btn-iso {
+            background: rgba(15, 23, 42, 0.85);
+            border-color: rgba(56, 189, 248, 0.35);
+            color: #38bdf8;
+            box-shadow: none;
+        }
+        .btn-iso:hover {
+            background: rgba(30, 41, 59, 0.95);
+            border-color: #38bdf8;
+            color: #ffffff;
+            box-shadow: 0 4px 18px rgba(56, 189, 248, 0.35);
+        }
+        .btn-iso.active {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            border-color: #38bdf8;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+        }
         .btn-chaos {
             background: rgba(35, 18, 20, 0.85);
             border-color: rgba(239, 68, 68, 0.35);
@@ -162,18 +180,104 @@
             box-shadow: 0 4px 18px rgba(239, 68, 68, 0.35);
         }
 
-        /* Map Container & Fullscreen Canvas */
+        /* Map Container & Fullscreen Canvas with 2.5D Isometric Mode */
         #map-container {
             flex: 1;
             position: relative;
             background: #060911;
+            perspective: 1400px;
+            overflow: hidden;
+        }
+        #map-container.isometric canvas#mapCanvas {
+            transform: rotateX(50deg) rotateZ(-24deg) scale(1.18);
+            transform-origin: center center;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.95), 0 0 60px rgba(56, 189, 248, 0.15);
         }
         canvas#mapCanvas {
             display: block;
             width: 100%;
             height: 100%;
             cursor: crosshair;
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s ease;
         }
+
+        /* Sparkline HUD Top-Right */
+        #sparkline-hud {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 250px;
+            background: rgba(12, 16, 26, 0.92);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 30;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            transition: border-color 0.3s;
+        }
+        #sparkline-hud.surge-active {
+            border-color: rgba(245, 158, 11, 0.6);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.2);
+        }
+        .sparkline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sparkline-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #8b949e;
+            font-weight: 700;
+        }
+        .badge-normal {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            font-weight: 700;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .badge-surge {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            font-weight: 700;
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            animation: pulse-badge 1s infinite alternate;
+        }
+        @keyframes pulse-badge {
+            from { transform: scale(0.98); }
+            to { transform: scale(1.04); }
+        }
+        .sparkline-canvas-box {
+            background: #080b14;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 4px;
+        }
+        #sparklineCanvas {
+            display: block;
+            width: 100%;
+            height: 54px;
+        }
+        .sparkline-metrics-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+        }
+        .hud-dim { color: #64748b; }
+        .hud-amber { color: #f59e0b; font-weight: bold; }
+        .hud-green { color: #10b981; font-weight: bold; }
+        .hud-cyan { color: #38bdf8; font-weight: bold; }
 
         /* Map Legend Overlay */
         #map-legend {
@@ -197,10 +301,10 @@
         /* FSM State Machine Audit Timeline (Sliding Drawer on Right) */
         #audit-drawer {
             position: absolute;
-            top: 20px;
+            top: 155px;
             right: 20px;
             width: 420px;
-            max-height: calc(100vh - 40px);
+            max-height: calc(100vh - 180px);
             background: rgba(12, 16, 26, 0.94);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(56, 189, 248, 0.4);
@@ -381,6 +485,9 @@
             <button id="btn-request" class="btn-ui" onclick="requestRideRandom()">
                 <span>📍 Solicitar Viaje (Click en Mapa)</span>
             </button>
+            <button id="btn-isometric" class="btn-ui btn-iso" onclick="toggleIsometricView()" title="Conmutar Vista Flota 2.5D Isométrica (Tecla I)">
+                <span id="btn-iso-text">🏙️ Vista Flota 2.5D Isométrica</span>
+            </button>
             <button id="btn-surge" class="btn-ui btn-surge" onclick="toggleSurgePricing()">
                 <span id="surge-btn-text">🔥 Activar Surge Pricing (2.4x)</span>
             </button>
@@ -401,11 +508,28 @@
     <main id="map-container">
         <canvas id="mapCanvas"></canvas>
 
+        <!-- Sparkline HUD: Demand Pressure vs. Supply -->
+        <div id="sparkline-hud" class="font-mono">
+            <div class="sparkline-header">
+                <span class="sparkline-title">PRESIÓN DE DEMANDA</span>
+                <span id="sparkline-surge-badge" class="badge-normal">1.0x ESTABLE</span>
+            </div>
+            <div class="sparkline-canvas-box">
+                <canvas id="sparklineCanvas" width="220" height="54"></canvas>
+            </div>
+            <div class="sparkline-metrics-row">
+                <div><span class="hud-dim">Demanda:</span> <span id="spk-demand" class="hud-amber">1.420 r/m</span></div>
+                <div><span class="hud-dim">Ociosos:</span> <span id="spk-idle" class="hud-green">5.420</span></div>
+                <div><span class="hud-dim">Ratio D/O:</span> <span id="spk-ratio" class="hud-cyan">0.26x</span></div>
+            </div>
+        </div>
+
         <!-- Legend Overlay -->
         <div id="map-legend" class="font-mono">
             <div class="legend-item"><span class="legend-dot" style="background: #10b981; box-shadow: 0 0 6px #10b981;"></span> Disponible</div>
             <div class="legend-item"><span class="legend-dot" style="background: #ef4444; box-shadow: 0 0 6px #ef4444;"></span> Asignado (BUSY)</div>
             <div class="legend-item"><span class="legend-dot" style="background: #38bdf8; box-shadow: 0 0 6px #38bdf8;"></span> Pasajero (Pickup)</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #00f0ff; box-shadow: 0 0 6px #00f0ff; border-radius: 0;"></span> Ruta Vial A*</div>
             <div class="legend-item"><span class="legend-dot" style="background: #f59e0b; border-radius: 0;"></span> Radar Stepping (500m-3km)</div>
         </div>
 
@@ -535,10 +659,328 @@
                 badge.innerText = "1.0x (Normal)";
                 badge.style.color = "#10b981";
             }
+            updateSparklineHUD();
+        }
+
+        // --- 3B. 2.5D Isometric Mode State ---
+        let isIsometricView = false;
+        function toggleIsometricView() {
+            isIsometricView = !isIsometricView;
+            const container = document.getElementById('map-container');
+            const btn = document.getElementById('btn-isometric');
+            const btnText = document.getElementById('btn-iso-text');
+
+            if (isIsometricView) {
+                container.classList.add('isometric');
+                btn.classList.add('active');
+                btnText.innerText = "🗺️ Vista 2D Ortogonal";
+            } else {
+                container.classList.remove('isometric');
+                btn.classList.remove('active');
+                btnText.innerText = "🏙️ Vista Flota 2.5D Isométrica";
+            }
+        }
+
+        // Hotkeys (I: Isometric, S: Surge, Space: Request Ride)
+        window.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'i') {
+                toggleIsometricView();
+            } else if (e.key.toLowerCase() === 's') {
+                toggleSurgePricing();
+            } else if (e.code === 'Space') {
+                e.preventDefault();
+                requestRideRandom();
+            }
+        });
+
+        // --- 3C. Madrid A* Road Navigation Graph ---
+        const MADRID_NODES = {
+            'SOL': { lon: -3.703790, lat: 40.416775, name: 'Puerta del Sol' },
+            'CALLAO': { lon: -3.705600, lat: 40.420000, name: 'Plaza del Callao' },
+            'ESPANA': { lon: -3.712200, lat: 40.423400, name: 'Plaza de España' },
+            'MONCLOA': { lon: -3.719000, lat: 40.435000, name: 'Moncloa' },
+            'GRANVIA_RED': { lon: -3.700000, lat: 40.419000, name: 'Gran Vía (Red)' },
+            'METROPOLIS': { lon: -3.697000, lat: 40.418200, name: 'Metrópolis' },
+            'CIBELES': { lon: -3.692800, lat: 40.418000, name: 'Plaza de Cibeles' },
+            'INDEPENDENCIA': { lon: -3.688800, lat: 40.420000, name: 'Puerta de Alcalá' },
+            'GOYA': { lon: -3.678000, lat: 40.424500, name: 'Calle Goya' },
+            'NEPTUNO': { lon: -3.694000, lat: 40.415000, name: 'Plaza de Neptuno' },
+            'ATOCHA': { lon: -3.692500, lat: 40.408000, name: 'Atocha Glorieta' },
+            'COLON': { lon: -3.690000, lat: 40.425500, name: 'Plaza de Colón' },
+            'CASTELLANA_N': { lon: -3.689000, lat: 40.437000, name: 'Castellana Norte' },
+            'ORIENTE': { lon: -3.713000, lat: 40.416000, name: 'Palacio Real' },
+            'VILLA': { lon: -3.708500, lat: 40.415800, name: 'Plaza de la Villa' },
+            'LATINA': { lon: -3.708000, lat: 40.412000, name: 'La Latina' },
+            'PUERTA_TOLEDO': { lon: -3.712000, lat: 40.406500, name: 'Puerta de Toledo' },
+            'ANTON_MARTIN': { lon: -3.698000, lat: 40.412500, name: 'Antón Martín' },
+            'SANTA_ANA': { lon: -3.701500, lat: 40.414500, name: 'Plaza de Santa Ana' },
+            'CHUECA': { lon: -3.698500, lat: 40.423000, name: 'Chueca' },
+            'BILBAO': { lon: -3.702500, lat: 40.429000, name: 'Bilbao' },
+            'SAN_BERNARDO': { lon: -3.708000, lat: 40.427000, name: 'San Bernardo' }
+        };
+
+        const MADRID_EDGES = [
+            ['SOL', 'CALLAO'],
+            ['SOL', 'METROPOLIS'],
+            ['SOL', 'VILLA'],
+            ['SOL', 'SANTA_ANA'],
+            ['CALLAO', 'ESPANA'],
+            ['CALLAO', 'GRANVIA_RED'],
+            ['CALLAO', 'SAN_BERNARDO'],
+            ['GRANVIA_RED', 'METROPOLIS'],
+            ['GRANVIA_RED', 'CHUECA'],
+            ['METROPOLIS', 'CIBELES'],
+            ['CIBELES', 'INDEPENDENCIA'],
+            ['CIBELES', 'NEPTUNO'],
+            ['CIBELES', 'COLON'],
+            ['INDEPENDENCIA', 'GOYA'],
+            ['INDEPENDENCIA', 'COLON'],
+            ['NEPTUNO', 'ATOCHA'],
+            ['NEPTUNO', 'SANTA_ANA'],
+            ['COLON', 'CASTELLANA_N'],
+            ['COLON', 'BILBAO'],
+            ['ESPANA', 'MONCLOA'],
+            ['ESPANA', 'ORIENTE'],
+            ['ESPANA', 'SAN_BERNARDO'],
+            ['SAN_BERNARDO', 'BILBAO'],
+            ['CHUECA', 'BILBAO'],
+            ['ORIENTE', 'VILLA'],
+            ['VILLA', 'LATINA'],
+            ['LATINA', 'PUERTA_TOLEDO'],
+            ['LATINA', 'SANTA_ANA'],
+            ['SANTA_ANA', 'ANTON_MARTIN'],
+            ['ANTON_MARTIN', 'ATOCHA']
+        ];
+
+        const graphAdj = {};
+        for (let id in MADRID_NODES) graphAdj[id] = [];
+        for (let [u, v] of MADRID_EDGES) {
+            const pU = MADRID_NODES[u];
+            const pV = MADRID_NODES[v];
+            const dx = (pU.lon - pV.lon) * 85.0;
+            const dy = (pU.lat - pV.lat) * 111.0;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            graphAdj[u].push({ node: v, dist });
+            graphAdj[v].push({ node: u, dist });
+        }
+
+        function findClosestNode(lon, lat) {
+            let closest = null;
+            let minDist = Infinity;
+            for (let id in MADRID_NODES) {
+                const n = MADRID_NODES[id];
+                const dx = (n.lon - lon) * 85.0;
+                const dy = (n.lat - lat) * 111.0;
+                const d = dx*dx + dy*dy;
+                if (d < minDist) {
+                    minDist = d;
+                    closest = id;
+                }
+            }
+            return closest;
+        }
+
+        function computeAStarRoute(startLon, startLat, endLon, endLat) {
+            const startNode = findClosestNode(startLon, startLat);
+            const endNode = findClosestNode(endLon, endLat);
+
+            if (startNode === endNode) {
+                return [
+                    { lon: startLon, lat: startLat },
+                    { lon: MADRID_NODES[startNode].lon, lat: MADRID_NODES[startNode].lat, name: MADRID_NODES[startNode].name },
+                    { lon: endLon, lat: endLat }
+                ];
+            }
+
+            const openSet = new Set([startNode]);
+            const cameFrom = {};
+            const gScore = {};
+            const fScore = {};
+
+            for (let id in MADRID_NODES) {
+                gScore[id] = Infinity;
+                fScore[id] = Infinity;
+            }
+            gScore[startNode] = 0;
+
+            const targetPos = MADRID_NODES[endNode];
+            const h = (id) => {
+                const n = MADRID_NODES[id];
+                const dx = (n.lon - targetPos.lon) * 85.0;
+                const dy = (n.lat - targetPos.lat) * 111.0;
+                return Math.sqrt(dx*dx + dy*dy);
+            };
+            fScore[startNode] = h(startNode);
+
+            while (openSet.size > 0) {
+                let current = null;
+                let lowestF = Infinity;
+                for (let node of openSet) {
+                    if (fScore[node] < lowestF) {
+                        lowestF = fScore[node];
+                        current = node;
+                    }
+                }
+
+                if (current === endNode) {
+                    const path = [];
+                    let curr = current;
+                    while (curr) {
+                        path.unshift({ lon: MADRID_NODES[curr].lon, lat: MADRID_NODES[curr].lat, name: MADRID_NODES[curr].name });
+                        curr = cameFrom[curr];
+                    }
+                    return [
+                        { lon: startLon, lat: startLat },
+                        ...path,
+                        { lon: endLon, lat: endLat }
+                    ];
+                }
+
+                openSet.delete(current);
+
+                for (let edge of graphAdj[current]) {
+                    const neighbor = edge.node;
+                    const tentativeG = gScore[current] + edge.dist;
+                    if (tentativeG < gScore[neighbor]) {
+                        cameFrom[neighbor] = current;
+                        gScore[neighbor] = tentativeG;
+                        fScore[neighbor] = tentativeG + h(neighbor);
+                        openSet.add(neighbor);
+                    }
+                }
+            }
+
+            return [
+                { lon: startLon, lat: startLat },
+                { lon: endLon, lat: endLat }
+            ];
+        }
+
+        function interpolatePath(pts, t) {
+            if (!pts || pts.length === 0) return { lon: centerLon, lat: centerLat };
+            if (pts.length === 1 || t <= 0) return { lon: pts[0].lon, lat: pts[0].lat };
+            if (t >= 1) return { lon: pts[pts.length - 1].lon, lat: pts[pts.length - 1].lat };
+
+            const segDists = [];
+            let total = 0;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const dx = (pts[i+1].lon - pts[i].lon) * 85.0;
+                const dy = (pts[i+1].lat - pts[i].lat) * 111.0;
+                const d = Math.sqrt(dx*dx + dy*dy);
+                segDists.push(d);
+                total += d;
+            }
+
+            if (total === 0) return { lon: pts[0].lon, lat: pts[0].lat };
+
+            let targetDist = t * total;
+            let accum = 0;
+            for (let i = 0; i < segDists.length; i++) {
+                const segLen = segDists[i];
+                if (accum + segLen >= targetDist) {
+                    const segT = (targetDist - accum) / (segLen || 0.0001);
+                    return {
+                        lon: pts[i].lon + (pts[i+1].lon - pts[i].lon) * segT,
+                        lat: pts[i].lat + (pts[i+1].lat - pts[i].lat) * segT
+                    };
+                }
+                accum += segLen;
+            }
+            return { lon: pts[pts.length - 1].lon, lat: pts[pts.length - 1].lat };
+        }
+
+        // --- 3D Isometric Buildings Data & Renderer ---
+        const MADRID_3D_BUILDINGS = [
+            { lon: -3.708, lat: 40.421, w: 0.0035, h: 0.0022, height: 36, label: "GRAN VÍA NORTE" },
+            { lon: -3.703, lat: 40.420, w: 0.0030, h: 0.0020, height: 42, label: "CALLAO CINEMAS" },
+            { lon: -3.699, lat: 40.419, w: 0.0032, h: 0.0022, height: 38, label: "TELEFÓNICA TOWER" },
+            { lon: -3.712, lat: 40.424, w: 0.0026, h: 0.0026, height: 78, label: "TORRE DE MADRID" },
+            { lon: -3.705, lat: 40.417, w: 0.0028, h: 0.0018, height: 26, label: "SOL SUR" },
+            { lon: -3.702, lat: 40.416, w: 0.0025, h: 0.0018, height: 28, label: "SOL ESTE" },
+            { lon: -3.707, lat: 40.415, w: 0.0034, h: 0.0025, height: 24, label: "PLAZA MAYOR" },
+            { lon: -3.714, lat: 40.417, w: 0.0042, h: 0.0036, height: 34, label: "PALACIO REAL" },
+            { lon: -3.692, lat: 40.419, w: 0.0032, h: 0.0028, height: 50, label: "PALACIO CIBELES" },
+            { lon: -3.689, lat: 40.430, w: 0.0028, h: 0.0028, height: 82, label: "TORRES COLÓN" },
+            { lon: -3.688, lat: 40.435, w: 0.0030, h: 0.0030, height: 96, label: "CASTELLANA COMPLEX" }
+        ];
+
+        function render3DBuildings() {
+            ctx.save();
+            for (let b of MADRID_3D_BUILDINGS) {
+                const bPos = toScreen(b.lon, b.lat);
+                const hw = ((b.w / lonSpan) * canvas.width) * 0.5;
+                const hh = ((b.h / latSpan) * canvas.height) * 0.5;
+                const H = b.height;
+
+                const b0 = { x: bPos.x - hw, y: bPos.y - hh };
+                const b1 = { x: bPos.x + hw, y: bPos.y - hh };
+                const b2 = { x: bPos.x + hw, y: bPos.y + hh };
+                const b3 = { x: bPos.x - hw, y: bPos.y + hh };
+
+                const t0 = { x: b0.x, y: b0.y - H };
+                const t1 = { x: b1.x, y: b1.y - H };
+                const t2 = { x: b2.x, y: b2.y - H };
+                const t3 = { x: b3.x, y: b3.y - H };
+
+                // Base footprint
+                ctx.fillStyle = 'rgba(8, 12, 22, 0.7)';
+                ctx.beginPath();
+                ctx.moveTo(b0.x, b0.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b3.x, b3.y);
+                ctx.closePath();
+                ctx.fill();
+
+                // Extruded South Facade
+                const gradSouth = ctx.createLinearGradient(0, b3.y, 0, t3.y);
+                gradSouth.addColorStop(0, 'rgba(15, 23, 42, 0.85)');
+                gradSouth.addColorStop(1, 'rgba(30, 58, 138, 0.35)');
+                ctx.fillStyle = gradSouth;
+                ctx.beginPath();
+                ctx.moveTo(b3.x, b3.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
+                ctx.closePath();
+                ctx.fill();
+
+                // Extruded East Facade
+                const gradEast = ctx.createLinearGradient(0, b2.y, 0, t2.y);
+                gradEast.addColorStop(0, 'rgba(15, 23, 42, 0.75)');
+                gradEast.addColorStop(1, 'rgba(20, 35, 75, 0.28)');
+                ctx.fillStyle = gradEast;
+                ctx.beginPath();
+                ctx.moveTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y);
+                ctx.closePath();
+                ctx.fill();
+
+                // Roof Slab Top Face
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.16)';
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Wireframe Vertical Struts
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(b0.x, b0.y); ctx.lineTo(t0.x, t0.y);
+                ctx.moveTo(b1.x, b1.y); ctx.lineTo(t1.x, t1.y);
+                ctx.moveTo(b2.x, b2.y); ctx.lineTo(t2.x, t2.y);
+                ctx.moveTo(b3.x, b3.y); ctx.lineTo(t3.x, t3.y);
+                ctx.stroke();
+
+                if (H >= 40) {
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.font = '700 9px JetBrains Mono';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(b.label, (t0.x + t1.x) / 2, t0.y - 6);
+                }
+            }
+            ctx.restore();
         }
 
         // --- 4. Active Trip & Expanding Radar Stepping State ---
-        let activeTrip = null; // { pickupLon, pickupLat, matchedDriver, currentRadiusMeters, targetRadiusMeters, waveProgress, fsmData }
+        let activeTrip = null; // { pickupLon, pickupLat, matchedDriver, currentRadiusMeters, targetRadiusMeters, waveProgress, fsmData, routeWaypoints, beaconProgress }
         let lastAuditPayload = null;
 
         async function triggerMatchingEngine(lon, lat) {
@@ -572,11 +1014,12 @@
                 }
 
                 if (!closest) {
-                    // Fallback to nearest
                     closest = drivers[0];
                 }
 
                 closest.status = 'BUSY';
+                const route = computeAStarRoute(closest.lon, closest.lat, lon, lat);
+
                 activeTrip = {
                     tripID: data.trip_id,
                     pickupLon: lon,
@@ -586,11 +1029,14 @@
                     currentRadiusMeters: 50,
                     waveProgress: 0,
                     animating: true,
-                    fsmData: data
+                    fsmData: data,
+                    routeWaypoints: route,
+                    beaconProgress: 0.0
                 };
 
                 // Open State Machine Audit Timeline
                 renderAuditDrawer(data);
+                updateSparklineHUD();
 
             } catch (err) {
                 console.error("Match API Error, falling back to local simulation:", err);
@@ -808,7 +1254,12 @@
                 }
             }
 
-            // F. Active Trip Radar Stepping & Matched Vector Line
+            // 2.5D Isometric Madrid Architecture Blocks
+            if (isIsometricView) {
+                render3DBuildings();
+            }
+
+            // F. Active Trip Radar Stepping & Matched A* Real Road Route
             if (activeTrip) {
                 const pPos = toScreen(activeTrip.pickupLon, activeTrip.pickupLat);
 
@@ -856,44 +1307,183 @@
                 ctx.stroke();
                 ctx.restore();
 
-                // Matched Driver Vector Line & Callout
-                if (activeTrip.matchedDriver) {
-                    const dPos = toScreen(activeTrip.matchedDriver.lon, activeTrip.matchedDriver.lat);
-
-                    // Flowing dashed vector line
+                // Matched Real Road A* Path Route & Traveling Car Beacon
+                if (activeTrip.routeWaypoints && activeTrip.routeWaypoints.length > 1) {
                     ctx.save();
+
+                    // Glow underline
                     ctx.beginPath();
-                    ctx.moveTo(pPos.x, pPos.y);
-                    ctx.lineTo(dPos.x, dPos.y);
-                    ctx.strokeStyle = '#10b981';
+                    const startPt = toScreen(activeTrip.routeWaypoints[0].lon, activeTrip.routeWaypoints[0].lat);
+                    ctx.moveTo(startPt.x, startPt.y);
+                    for (let i = 1; i < activeTrip.routeWaypoints.length; i++) {
+                        const pt = toScreen(activeTrip.routeWaypoints[i].lon, activeTrip.routeWaypoints[i].lat);
+                        ctx.lineTo(pt.x, pt.y);
+                    }
+                    ctx.strokeStyle = '#00f0ff';
+                    ctx.lineWidth = 3.5;
+                    ctx.shadowColor = '#00f0ff';
+                    ctx.shadowBlur = 14;
+                    ctx.stroke();
+
+                    // Flowing dashed light stream
+                    ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 2;
                     ctx.setLineDash([8, 6]);
-                    ctx.lineDashOffset = -now * 0.03;
-                    ctx.shadowColor = '#10b981';
-                    ctx.shadowBlur = 10;
+                    ctx.lineDashOffset = -now * 0.04;
                     ctx.stroke();
+
+                    // Draw waypoint nodes on intersections
+                    for (let i = 1; i < activeTrip.routeWaypoints.length - 1; i++) {
+                        const wpt = toScreen(activeTrip.routeWaypoints[i].lon, activeTrip.routeWaypoints[i].lat);
+                        ctx.beginPath();
+                        ctx.arc(wpt.x, wpt.y, 3, 0, Math.PI * 2);
+                        ctx.fillStyle = '#00f0ff';
+                        ctx.fill();
+                    }
                     ctx.restore();
 
-                    // Tooltip Callout
+                    // Advance Animated Vehicle Beacon along Real Madrid Streets
+                    activeTrip.beaconProgress = (activeTrip.beaconProgress || 0) + 0.007;
+                    if (activeTrip.beaconProgress > 1.0) activeTrip.beaconProgress = 0.0;
+
+                    const carCoord = interpolatePath(activeTrip.routeWaypoints, activeTrip.beaconProgress);
+                    const carScreen = toScreen(carCoord.lon, carCoord.lat);
+
                     ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(carScreen.x, carScreen.y, 6.5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#10b981';
+                    ctx.shadowColor = '#10b981';
+                    ctx.shadowBlur = 16;
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Ripple beacon wave
+                    ctx.beginPath();
+                    ctx.arc(carScreen.x, carScreen.y, 10 + (now * 0.02 % 8), 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Floating Callout
                     ctx.fillStyle = 'rgba(11, 15, 24, 0.94)';
                     ctx.strokeStyle = '#10b981';
                     ctx.lineWidth = 1;
 
-                    const labelText = `MATCHED: ${activeTrip.matchedDriver.id} • 466 µs via Lua`;
+                    const labelText = `MATCHED: ${activeTrip.matchedDriver.id} • 466 µs via Lua (A* Real Route)`;
                     ctx.font = '700 11px JetBrains Mono';
                     const textW = ctx.measureText(labelText).width;
 
-                    ctx.fillRect(dPos.x - textW/2 - 10, dPos.y - 32, textW + 20, 22);
-                    ctx.strokeRect(dPos.x - textW/2 - 10, dPos.y - 32, textW + 20, 22);
+                    ctx.fillRect(carScreen.x - textW/2 - 10, carScreen.y - 34, textW + 20, 22);
+                    ctx.strokeRect(carScreen.x - textW/2 - 10, carScreen.y - 34, textW + 20, 22);
 
                     ctx.fillStyle = '#10b981';
                     ctx.textAlign = 'center';
-                    ctx.fillText(labelText, dPos.x, dPos.y - 17);
+                    ctx.fillText(labelText, carScreen.x, carScreen.y - 19);
                     ctx.restore();
                 }
             }
         }
+
+        // --- 8. Realtime Demand Pressure Sparkline HUD Logic ---
+        const sparkCanvas = document.getElementById('sparklineCanvas');
+        const sparkCtx = sparkCanvas.getContext('2d');
+        const sparkDemand = new Array(32).fill(1420);
+        const sparkSupply = new Array(32).fill(5400);
+
+        function updateSparklineHUD() {
+            let idleCount = 0;
+            for (let d of drivers) {
+                if (d.status === 'AVAILABLE') idleCount++;
+            }
+
+            let baseDemand = 1350 + Math.floor((Math.random() - 0.5) * 200);
+            if (surgeActive) {
+                baseDemand = 3600 + Math.floor(Math.random() * 900);
+            }
+
+            sparkDemand.shift();
+            sparkDemand.push(baseDemand);
+
+            sparkSupply.shift();
+            sparkSupply.push(idleCount);
+
+            const ratio = baseDemand / Math.max(idleCount * 0.45, 1);
+
+            const elDemand = document.getElementById('spk-demand');
+            const elIdle = document.getElementById('spk-idle');
+            const elRatio = document.getElementById('spk-ratio');
+            const elBadge = document.getElementById('sparkline-surge-badge');
+            const elCard = document.getElementById('sparkline-hud');
+
+            if (elDemand) elDemand.innerText = `${baseDemand.toLocaleString()} r/m`;
+            if (elIdle) elIdle.innerText = `${idleCount.toLocaleString()}`;
+            if (elRatio) elRatio.innerText = `${ratio.toFixed(2)}x`;
+
+            const isSurgeNow = surgeActive || ratio > 1.4;
+            if (isSurgeNow) {
+                if (elBadge) {
+                    elBadge.className = 'badge-surge';
+                    elBadge.innerText = `🔥 SURGE ACTIVE (${surgeActive ? '2.4x' : ratio.toFixed(1) + 'x'})`;
+                }
+                if (elCard) elCard.classList.add('surge-active');
+            } else {
+                if (elBadge) {
+                    elBadge.className = 'badge-normal';
+                    elBadge.innerText = '1.0x ESTABLE';
+                }
+                if (elCard) elCard.classList.remove('surge-active');
+            }
+
+            const W = sparkCanvas.width;
+            const H = sparkCanvas.height;
+            sparkCtx.clearRect(0, 0, W, H);
+
+            const maxVal = Math.max(...sparkDemand, 6000);
+
+            // Draw Capacity Line (Emerald dashed)
+            sparkCtx.beginPath();
+            for (let i = 0; i < sparkSupply.length; i++) {
+                const x = (i / (sparkSupply.length - 1)) * W;
+                const y = H - (sparkSupply[i] / maxVal) * (H - 8) - 4;
+                if (i === 0) sparkCtx.moveTo(x, y);
+                else sparkCtx.lineTo(x, y);
+            }
+            sparkCtx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
+            sparkCtx.lineWidth = 1.5;
+            sparkCtx.setLineDash([3, 3]);
+            sparkCtx.stroke();
+            sparkCtx.setLineDash([]);
+
+            // Draw Demand Curve (Amber / Glowing Red)
+            sparkCtx.beginPath();
+            for (let i = 0; i < sparkDemand.length; i++) {
+                const x = (i / (sparkDemand.length - 1)) * W;
+                const y = H - (sparkDemand[i] / maxVal) * (H - 8) - 4;
+                if (i === 0) sparkCtx.moveTo(x, y);
+                else sparkCtx.lineTo(x, y);
+            }
+            sparkCtx.strokeStyle = isSurgeNow ? '#ef4444' : '#f59e0b';
+            sparkCtx.lineWidth = 2;
+            sparkCtx.shadowColor = isSurgeNow ? '#ef4444' : '#f59e0b';
+            sparkCtx.shadowBlur = 8;
+            sparkCtx.stroke();
+            sparkCtx.shadowBlur = 0;
+
+            // Area Gradient under Demand
+            sparkCtx.lineTo(W, H);
+            sparkCtx.lineTo(0, H);
+            const fillGrad = sparkCtx.createLinearGradient(0, 0, 0, H);
+            fillGrad.addColorStop(0, isSurgeNow ? 'rgba(239, 68, 68, 0.28)' : 'rgba(245, 158, 11, 0.2)');
+            fillGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            sparkCtx.fillStyle = fillGrad;
+            sparkCtx.fill();
+        }
+
+        setInterval(updateSparklineHUD, 800);
+        updateSparklineHUD();
 
         requestAnimationFrame(render);
     </script>
