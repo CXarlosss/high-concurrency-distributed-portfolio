@@ -86,6 +86,80 @@ SET cooldown:user:<user_id> 1 NX PX 30000
 
 ---
 
+## 🚀 Pixel War: Escalado a 100.000 Usuarios en Clúster Multihost Distribuido
+
+### La Pregunta del Entrevistador
+> *"Tu implementación monohost de Pixel War soporta 5.000 VUs en un único proceso Go. Supón que el producto se vuelve viral y necesitas escalar a 100.000 usuarios concurrentes en un clúster de Kubernetes. ¿Cómo rediseñas la arquitectura para evitar que el broadcast de píxeles colapse la red y los nodos se desincronicen?"*
+
+### La Trampa Oculta
+1. **La Catástrofe del Fan-Out de Red:** Con 100.000 usuarios y 2.000 escrituras de píxeles/segundo, un broadcast delta a delta significa:
+   $$\text{Mensajes de Red} = 2.000\ \text{píxeles/s} \times 100.000\ \text{conexiones} = 200.000.000\ \text{msg/s}$$
+   A 50 bytes por frame (cabeceras TCP/IP + WebSocket + payload), esto equivale a **10 GB/s de ancho de banda de salida**. Ningún nodo o broker resiste semejante saturación de NIC.
+2. **La Trampa de Redis Pub/Sub:** Intentar usar Redis Pub/Sub estándar como bus de mensajería para 200 millones de mensajes por segundo funde el event loop monohilo de Redis en milisegundos.
+3. **Split-Brain en el Lienzo:** Si cada worker de Go escribe de forma autónoma en su memoria local sin coordinación central, clientes conectados a distintos nodos verán píxeles incompatibles en la misma coordenada `(X, Y)`.
+
+---
+
+### Respuesta Modelo (Estrategia Staff / Principal en 5 Capas)
+
+#### 1. Arquitectura de Dos Capas: Edge Gateways vs Canvas State Owner
+> *"El secreto para escalar WebSockets masivos es **desacoplar la terminación de conexiones del cómputo de estado**. Separamos el clúster en dos grupos de nodos:"*
+
+```text
+[100.000 Clientes WebSockets]
+             |
+             v (L4 Load Balancer: AWS NLB / Maglev)
++-----------------------------------------------------------------------+
+|  CAPA EDGE GATEWAY (10 nodos Go: 10k conexiones c/u - epoll / kqueue)  |
++-----------------------------------------------------------------------+
+      | (Píxeles entrantes)                          ^ (Batch Broadcast)
+      v (gRPC / NATS JetStream)                      | (20 Hz - 50 ms)
++-----------------------------------------------------------------------+
+|  CAPA CANVAS OWNER (Particionado Espacial en Memoria de 1M de Píxeles)|
+|         - Partición Norte (500k px)  |  Partición Sur (500k px)        |
+|         - 64 sync.RWMutex Shards      |  Secuenciador Global (seq_id)   |
++-----------------------------------------------------------------------+
+```
+
+1. **Capa Edge Gateway (Stateless):** Un pool de 10 pods de Go termina 10.000 conexiones WebSocket cada uno (~120 MB RAM por pod usando `gobwas/ws` o `epoll` directo en Linux sin goroutines zombi).
+2. **Capa Canvas Core (Stateful Single-Writer):** El lienzo reside en memoria en 1 o 2 nodos maestros particionados espacialmente (ej. Norte/Sur o cuadrantes). Cada escritura se serializa a través de un canal gRPC streaming, garantizando un orden total con un número de secuencia monótono (`uint64 seq_id`). Cero bloqueos distribuidos.
+
+---
+
+#### 2. Broadcast Coalescing & Tick-Based Batching (Solución al Fan-Out)
+> *"Para erradicar la saturación de 200M msg/s, aplicamos **Coalescing Temporal a 20 Hz (50 ms)**, idéntico a los motores de videojuegos competitivos:"*
+
+- En lugar de propagar cada píxel de 5 bytes de forma inmediata, el Edge Gateway acumula los deltas entrantes durante una ventana fija de 50 ms.
+- Si en 50 ms se han pintado 80 píxeles en el lienzo, el worker empaqueta un **único batch binario de 400 bytes** ($80 \times 5\text{B}$) y lo difunde a sus 10.000 clientes locales.
+- **Impacto Matemático:** La tasa de llamadas a `write()` en el kernel pasa de 20.000.000 syscalls/s por nodo a solo:
+  $$20\ \text{ticks/s} \times 10.000\ \text{clientes} = 200.000\ \text{frames/s por pod}$$
+  Una reducción del **99% en syscalls y saturación de paquetes TCP**.
+
+---
+
+#### 3. Interest Management y Filtrado por Viewport (AoI)
+> *"Un usuario en un teléfono o monitor con zoom x4 solo observa un recorte de $250 \times 250$ píxeles del lienzo total de $1000 \times 1000$."*
+
+- El cliente envía su bounding box visible cuando hace pan o zoom: `viewport: {x1, y1, x2, y2}`.
+- El Gateway filtra el batch de 50 ms contra el viewport de cada cliente (utilizando la misma técnica de **Spatial Hash Grid 2D** que diseñamos para Arena .io).
+- Si un píxel se pintó en la esquina opuesta, se descarta para esa conexión, ahorrando otro 75% del ancho de banda de salida.
+
+---
+
+#### 4. Thundering Herd en la Carga Inicial (S3 + CDN Edge Caching)
+> *"Si 10.000 usuarios recargan la página a la vez, pedir el lienzo de 1 MB a los servidores Go generaría 10 GB de transferencia instantánea y pararía el event loop."*
+
+- El nodo Canvas Core genera un snapshot binario del millón de píxeles cada 5 segundos y lo publica comprimido en formato **Brotli / Zstandard (~140 KB)** en un bucket de S3 detrás de **Cloudflare / CloudFront CDN**.
+- El navegador descarga el lienzo completo desde el CDN en <25 ms con caché de borde HTTP/3.
+- Inmediatamente después, el WebSocket se suscribe al Gateway pidiendo únicamente los deltas perdidos desde el `snapshot_seq_id`, logrando una reconexión instantánea sin tocar la base de datos ni los nodos de cómputo.
+
+---
+
+#### 5. Resumen de Trade-Offs (Defensa Final)
+> *"El compromiso de diseño es que introducimos una latencia artificial máxima de 50 ms por el coalescing por lotes (imperceptible para un canvas colaborativo donde el cooldown de usuario es de 30 segundos), a cambio de recortar el tráfico de salida de 10 GB/s a menos de 80 MB/s en todo el clúster. Esto permite correr 100.000 usuarios concurrentes sobre hardware modesto de $300/mes en lugar de una infraestructura inmanejable de decenas de miles de dólares."*
+
+---
+
 ## 📚 Índice de las 5 Preguntas Trampa Previas
 
 | # | Proyecto | Cuello de Botella Auditado | Concepto Clave a Defender |
